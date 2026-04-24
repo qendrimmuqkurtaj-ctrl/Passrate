@@ -1,0 +1,67 @@
+name: pass_rate
+description: "A new Flutter project."
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  #http package
+  http: ^1.4.0
+  get: ^4.7.2
+  #for icon SVG
+  flutter_svg: ^2.0.17
+  #for caching image
+  cached_network_image: ^3.4.1
+  #for date time:
+  intl: ^0.20.2
+  #for loader :
+  flutter_spinkit:
+  #for internet connection:
+  connectivity_plus:
+  #for logging the error:
+  logger:
+  image_picker:
+  file_picker:
+  #for icon :
+  flutter_launcher_icons: ^0.14.4
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+
+flutter:
+
+  uses-material-design: true
+
+  assets:
+    - assets/
+    - assets/fonts/
+    - assets/images/
+    - assets/icons/
+
+
+
+
+  fonts:
+    - family: satoshi
+      fonts:
+        - asset: assets/fonts/satoshi/Satoshi-Black.otf
+        - asset: assets/fonts/satoshi/Satoshi-BlackItalic.otf
+        - asset: assets/fonts/satoshi/Satoshi-Bold.otf
+        - asset: assets/fonts/satoshi/Satoshi-BoldItalic.otf
+        - asset: assets/fonts/satoshi/Satoshi-Italic.otf
+        - asset: assets/fonts/satoshi/Satoshi-Light.otf
+        - asset: assets/fonts/satoshi/Satoshi-LightItalic.otf
+        - asset: assets/fonts/satoshi/Satoshi-Medium.otf
+        - asset: assets/fonts/satoshi/Satoshi-MediumItalic.otf
+        - asset: assets/fonts/satoshi/Satoshi-Regular.otf
+
