@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "5132550360",
+    "project_id": "passrate-4360d",
+    "storage_bucket": "passrate-4360d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:5132550360:android:5f2d965b2d9eeec5c1d7ad",
+        "android_client_info": {
+          "package_name": "com.example.pass_rate"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBSUf-E1Z9GMzkeDYhu68HRXpeEhDV9alg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

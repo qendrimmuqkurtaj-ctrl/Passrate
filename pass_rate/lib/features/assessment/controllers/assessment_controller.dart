@@ -1,0 +1,122 @@
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import '../../../core/services/firebase_service.dart';
+
+class AssessmentController extends GetxController {
+  final RxBool loadingAirlines = true.obs;
+  final RxBool loadingTasks = true.obs;
+  final RxBool submitting = false.obs;
+
+  final RxList<Map<String, dynamic>> airlines = <Map<String, dynamic>>[].obs;
+  final RxList<Map<String, dynamic>> tasks = <Map<String, dynamic>>[].obs;
+  final RxList<String> selectedTaskIds = <String>[].obs;
+  final RxList<String> selectedTaskNames = <String>[].obs;
+
+  Rx<Map<String, dynamic>?> selectedAirline = Rx<Map<String, dynamic>?>(null);
+  final RxInt selectedYear = DateTime.now().year.obs;
+  final RxInt selectedMonth = DateTime.now().month.obs;
+  final RxnBool passed = RxnBool();
+
+  final TextEditingController dateController = TextEditingController();
+
+  // Progress tracking
+  RxDouble get completionPercentage {
+    int steps = 0;
+    if (selectedAirline.value != null) steps++;
+    if (dateController.text.isNotEmpty) steps++;
+    if (selectedTaskIds.isNotEmpty) steps++;
+    if (passed.value != null) steps++;
+    return RxDouble(steps / 4);
+  }
+
+  bool get allCompleted =>
+      selectedAirline.value != null &&
+      dateController.text.isNotEmpty &&
+      selectedTaskIds.isNotEmpty &&
+      passed.value != null;
+
+  @override
+  void onInit() {
+    super.onInit();
+    loadAirlines();
+    loadTasks();
+    _setDefaultDate();
+  }
+
+  void _setDefaultDate() {
+    final DateTime now = DateTime.now();
+    dateController.text = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> loadAirlines() async {
+    loadingAirlines.value = true;
+    airlines.value = await FirebaseService.getAirlines();
+    loadingAirlines.value = false;
+  }
+
+  Future<void> loadTasks() async {
+    loadingTasks.value = true;
+    tasks.value = await FirebaseService.getTasks();
+    loadingTasks.value = false;
+  }
+
+  void selectAirline(Map<String, dynamic> airline) {
+    selectedAirline.value = airline;
+    update();
+  }
+
+  void toggleTask(Map<String, dynamic> task) {
+    final String id = task['id'] as String;
+    final String name = task['name'] as String;
+    if (selectedTaskIds.contains(id)) {
+      selectedTaskIds.remove(id);
+      selectedTaskNames.remove(name);
+    } else {
+      selectedTaskIds.add(id);
+      selectedTaskNames.add(name);
+    }
+    update();
+  }
+
+  void setPassed(bool value) {
+    passed.value = value;
+    update();
+  }
+
+  void onDateSelected(DateTime date) {
+    selectedYear.value = date.year;
+    selectedMonth.value = date.month;
+    dateController.text = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+    update();
+  }
+
+  Future<Map<String, dynamic>?> submitAssessment() async {
+    if (!allCompleted) return null;
+    submitting.value = true;
+    try {
+      final String deviceId = await FirebaseService.getDeviceId();
+      final Map<String, dynamic> result = await FirebaseService.submitAssessment(
+        airlineId: selectedAirline.value!['id'] as String,
+        airlineName: selectedAirline.value!['name'] as String,
+        year: selectedYear.value,
+        month: selectedMonth.value,
+        taskIds: List<String>.from(selectedTaskIds),
+        taskNames: List<String>.from(selectedTaskNames),
+        passed: passed.value!,
+        deviceId: deviceId,
+      );
+      return result;
+    } finally {
+      submitting.value = false;
+    }
+  }
+
+  void reset() {
+    selectedAirline.value = null;
+    selectedTaskIds.clear();
+    selectedTaskNames.clear();
+    passed.value = null;
+    _setDefaultDate();
+    update();
+  }
+}
