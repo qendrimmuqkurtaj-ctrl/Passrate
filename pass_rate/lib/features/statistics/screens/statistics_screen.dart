@@ -143,7 +143,7 @@ class StatisticsScreen extends StatelessWidget {
   }
 
   void _showYearPickerDialog(BuildContext context, StatisticsController c) {
-    final List<int> years = List<int>.generate(10, (int i) => DateTime.now().year - i);
+    final List<int> years = List<int>.generate(DateTime.now().year + 1 - 2024 + 1, (int i) => DateTime.now().year + 1 - i);
     Get.dialog(Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Container(
@@ -325,7 +325,7 @@ class StatisticsScreen extends StatelessWidget {
   }
 
   void _showYearDialog(BuildContext context, int currentYear, Function(int) onSelected) {
-    final List<int> years = List<int>.generate(10, (int i) => DateTime.now().year - i);
+    final List<int> years = List<int>.generate(DateTime.now().year + 1 - 2024 + 1, (int i) => DateTime.now().year + 1 - i);
     Get.dialog(Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Container(

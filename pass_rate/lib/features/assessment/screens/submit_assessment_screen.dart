@@ -166,7 +166,7 @@ class SubmitAssessmentScreen extends StatelessWidget {
                   const Text('Year:', style: TextStyle(fontWeight: FontWeight.w500)),
                   Row(
                     children: <Widget>[
-                      IconButton(icon: const Icon(CupertinoIcons.chevron_left), onPressed: () => setState(() { if (selectedYear > now.year - 10) selectedYear--; })),
+                      IconButton(icon: const Icon(CupertinoIcons.chevron_left), onPressed: () => setState(() { if (selectedYear > 2024) selectedYear--; })),
                       Text('$selectedYear', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       IconButton(icon: const Icon(CupertinoIcons.chevron_right), onPressed: () => setState(() { if (selectedYear <= now.year) selectedYear++; })),
                     ],
