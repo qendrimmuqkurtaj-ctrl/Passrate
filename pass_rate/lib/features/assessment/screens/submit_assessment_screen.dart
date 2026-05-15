@@ -329,7 +329,7 @@ class ConfirmScreen extends StatelessWidget {
             const Spacer(),
             Row(children: <Widget>[
               Expanded(child: OutlinedButton(
-                onPressed: () { controller.reset(); Get.back(); Get.back(); },
+                onPressed: () { controller.reset(); Get.back(); },
                 child: const Text('Submit Another'),
               )),
               const SizedBox(width: 12),
