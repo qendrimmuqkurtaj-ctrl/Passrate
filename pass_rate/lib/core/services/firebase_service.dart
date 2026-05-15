@@ -197,6 +197,16 @@ class FirebaseService {
     }
   }
 
+  static Future<int> getTotalSubmissionsCount() async {
+    try {
+      final AggregateQuerySnapshot snap =
+          await _db.collection('submissions').count().get();
+      return snap.count ?? 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
   static Future<List<Map<String, dynamic>>> getTopAirlinesBySubmission(int year) async {
     try {
       final QuerySnapshot snap = await _db.collection('submissions').where('year', isEqualTo: year).get();
