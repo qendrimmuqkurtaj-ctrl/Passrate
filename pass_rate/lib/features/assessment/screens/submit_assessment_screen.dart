@@ -11,18 +11,18 @@ class SubmitAssessmentScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final AssessmentController controller = Get.put(AssessmentController());
+    Get.put(AssessmentController());
 
     return Scaffold(
-      backgroundColor: AppColors.bgColor,
+      backgroundColor: AppColors.bgPrimary,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.bgSecondary,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.primaryColor),
+          icon: const Icon(Icons.arrow_back, color: AppColors.accent),
           onPressed: () => Get.back(),
         ),
-        title: const Text('Submit Result', style: TextStyle(color: AppColors.primaryColor, fontWeight: FontWeight.w600, fontSize: 16)),
+        title: const Text('Submit Result', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 16)),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -31,7 +31,7 @@ class SubmitAssessmentScreen extends StatelessWidget {
           builder: (AssessmentController c) => Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              const Text('Submit Result', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primaryColor)),
+              const Text('Submit Result', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
               const SizedBox(height: 24),
 
               // Airline dropdown
@@ -55,7 +55,7 @@ class SubmitAssessmentScreen extends StatelessWidget {
                       c.loadingTasks.value
                         ? const Center(child: CircularProgressIndicator())
                         : c.tasks.isEmpty
-                          ? const Text('No tasks available', style: TextStyle(color: Colors.grey))
+                          ? const Text('No tasks available', style: TextStyle(color: AppColors.textMuted))
                           : _buildTasksCheckboxes(c),
                       const SizedBox(height: 16),
                     ],
@@ -65,9 +65,25 @@ class SubmitAssessmentScreen extends StatelessWidget {
               // Passed / Failed
               Row(
                 children: <Widget>[
-                  Expanded(child: _PassFailButton(label: 'PASSED', icon: CupertinoIcons.check_mark_circled, color: AppColors.green, selected: c.passed.value == true, onTap: () => c.setPassed(true))),
+                  Expanded(child: _PassFailButton(
+                    label: 'PASSED',
+                    icon: CupertinoIcons.check_mark_circled,
+                    color: AppColors.passText,
+                    borderColor: AppColors.passBorder,
+                    selectedBg: AppColors.passBg,
+                    selected: c.passed.value == true,
+                    onTap: () => c.setPassed(true),
+                  )),
                   const SizedBox(width: 12),
-                  Expanded(child: _PassFailButton(label: 'FAILED', icon: CupertinoIcons.xmark_circle, color: AppColors.red, selected: c.passed.value == false, onTap: () => c.setPassed(false))),
+                  Expanded(child: _PassFailButton(
+                    label: 'FAILED',
+                    icon: CupertinoIcons.xmark_circle,
+                    color: AppColors.failText,
+                    borderColor: AppColors.failBorder,
+                    selectedBg: AppColors.failBg,
+                    selected: c.passed.value == false,
+                    onTap: () => c.setPassed(false),
+                  )),
                 ],
               ),
               const SizedBox(height: 24),
@@ -99,19 +115,20 @@ class SubmitAssessmentScreen extends StatelessWidget {
   Widget _buildAirlineDropdown(BuildContext context, AssessmentController c) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white, borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.primaryColor),
+        color: AppColors.bgCard, borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<Map<String, dynamic>>(
           isExpanded: true,
-          hint: const Text('Choose the Airline Name', style: TextStyle(color: AppColors.primaryColor, fontSize: 14)),
+          hint: const Text('Choose the Airline Name', style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
           value: c.selectedAirline.value,
-          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.primaryColor),
+          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.accent),
+          dropdownColor: AppColors.bgCard,
           items: c.airlines.map((Map<String, dynamic> a) => DropdownMenuItem<Map<String, dynamic>>(
             value: a,
-            child: Text(a['name'] as String),
+            child: Text(a['name'] as String, style: const TextStyle(color: AppColors.textPrimary)),
           )).toList(),
           onChanged: (Map<String, dynamic>? v) { if (v != null) c.selectAirline(v); },
         ),
@@ -125,18 +142,18 @@ class SubmitAssessmentScreen extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.primaryColor),
+          color: AppColors.bgCard, borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.border),
         ),
         child: Row(
           children: <Widget>[
             Expanded(
               child: Text(
                 c.dateController.text.isEmpty ? 'Choose the year of assessment' : c.dateController.text,
-                style: TextStyle(color: c.dateController.text.isEmpty ? AppColors.primaryColor : Colors.black, fontSize: 14),
+                style: TextStyle(color: c.dateController.text.isEmpty ? AppColors.textMuted : AppColors.textPrimary, fontSize: 14),
               ),
             ),
-            const Icon(CupertinoIcons.calendar, color: AppColors.primaryColor, size: 20),
+            const Icon(CupertinoIcons.calendar, color: AppColors.accent, size: 20),
           ],
         ),
       ),
@@ -150,6 +167,7 @@ class SubmitAssessmentScreen extends StatelessWidget {
 
     showModalBottomSheet<void>(
       context: context,
+      backgroundColor: AppColors.bgCard,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (BuildContext ctx) => StatefulBuilder(
         builder: (BuildContext ctx2, StateSetter setState) => Padding(
@@ -157,18 +175,18 @@ class SubmitAssessmentScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              const Text('Select Year and Month', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primaryColor)),
+              const Text('Select Year and Month', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
               const SizedBox(height: 16),
               // Year selector
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
-                  const Text('Year:', style: TextStyle(fontWeight: FontWeight.w500)),
+                  const Text('Year:', style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
                   Row(
                     children: <Widget>[
-                      IconButton(icon: const Icon(CupertinoIcons.chevron_left), onPressed: () => setState(() { if (selectedYear > 2024) selectedYear--; })),
-                      Text('$selectedYear', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      IconButton(icon: const Icon(CupertinoIcons.chevron_right), onPressed: () => setState(() { if (selectedYear <= now.year) selectedYear++; })),
+                      IconButton(icon: const Icon(CupertinoIcons.chevron_left, color: AppColors.textPrimary), onPressed: () => setState(() { if (selectedYear > 2024) selectedYear--; })),
+                      Text('$selectedYear', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                      IconButton(icon: const Icon(CupertinoIcons.chevron_right, color: AppColors.textPrimary), onPressed: () => setState(() { if (selectedYear <= now.year) selectedYear++; })),
                     ],
                   ),
                 ],
@@ -186,11 +204,11 @@ class SubmitAssessmentScreen extends StatelessWidget {
                     onTap: () => setState(() => selectedMonth = i + 1),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: isSelected ? AppColors.primaryColor : Colors.white,
+                        color: isSelected ? AppColors.accent : AppColors.bgCard,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.primaryColor),
+                        border: Border.all(color: AppColors.border),
                       ),
-                      child: Center(child: Text(DateFormat('MMM').format(DateTime(2024, i + 1)), style: TextStyle(color: isSelected ? Colors.white : AppColors.primaryColor, fontSize: 12, fontWeight: FontWeight.w500))),
+                      child: Center(child: Text(DateFormat('MMM').format(DateTime(2024, i + 1)), style: TextStyle(color: isSelected ? Colors.white : AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w500))),
                     ),
                   );
                 },
@@ -216,17 +234,18 @@ class SubmitAssessmentScreen extends StatelessWidget {
   Widget _buildTasksCheckboxes(AssessmentController c) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white, borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.primaryColor),
+        color: AppColors.bgCard, borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: c.tasks.map((Map<String, dynamic> task) {
           final String id = task['id'] as String;
           final String name = task['name'] as String;
           return Obx(() => CheckboxListTile(
-            title: Text(name, style: const TextStyle(fontSize: 14)),
+            title: Text(name, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
             value: c.selectedTaskIds.contains(id),
-            activeColor: AppColors.primaryColor,
+            activeColor: AppColors.accent,
+            checkColor: Colors.white,
             onChanged: (bool? _) => c.toggleTask(task),
             controlAffinity: ListTileControlAffinity.leading,
             contentPadding: const EdgeInsets.symmetric(horizontal: 8),
@@ -247,7 +266,7 @@ class SubmitAssessmentScreen extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30)),
+      decoration: BoxDecoration(color: AppColors.bgCard, borderRadius: BorderRadius.circular(30)),
       child: Row(
         children: <Widget>[
           Expanded(
@@ -255,14 +274,14 @@ class SubmitAssessmentScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(30),
               child: LinearProgressIndicator(
                 value: progress,
-                backgroundColor: Colors.grey.shade200,
-                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
+                backgroundColor: AppColors.border,
+                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accent),
                 minHeight: 8,
               ),
             ),
           ),
           const SizedBox(width: 12),
-          Icon(progress >= 1.0 ? CupertinoIcons.checkmark_alt_circle_fill : CupertinoIcons.airplane, color: AppColors.primaryColor, size: 28),
+          Icon(progress >= 1.0 ? CupertinoIcons.checkmark_alt_circle_fill : CupertinoIcons.airplane, color: AppColors.accent, size: 28),
         ],
       ),
     );
@@ -286,11 +305,11 @@ class ConfirmScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.bgColor,
+      backgroundColor: AppColors.bgPrimary,
       appBar: AppBar(
-        backgroundColor: Colors.white, elevation: 0,
-        leading: IconButton(icon: const Icon(Icons.arrow_back, color: AppColors.primaryColor), onPressed: () => Get.back()),
-        title: const Text('Submit Result', style: TextStyle(color: AppColors.primaryColor, fontWeight: FontWeight.w600, fontSize: 16)),
+        backgroundColor: AppColors.bgSecondary, elevation: 0,
+        leading: IconButton(icon: const Icon(Icons.arrow_back, color: AppColors.accent), onPressed: () => Get.back()),
+        title: const Text('Submit Result', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 16)),
         centerTitle: true,
       ),
       body: Padding(
@@ -300,13 +319,13 @@ class ConfirmScreen extends StatelessWidget {
             const SizedBox(height: 20),
             const Icon(CupertinoIcons.check_mark_circled_solid, color: AppColors.green, size: 80),
             const SizedBox(height: 16),
-            const Text('Thank you! Your result has been submitted.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.grey, fontSize: 14)),
+            const Text('Thank you! Your result has been submitted.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
             const SizedBox(height: 24),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white, borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.primaryColor),
+                color: AppColors.bgCard, borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.border),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -315,13 +334,13 @@ class ConfirmScreen extends StatelessWidget {
                   Text('${result['year']}', style: Theme.of(context).textTheme.labelMedium),
                   const SizedBox(height: 16),
                   Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: <Widget>[
-                    const Text('Total Responses'),
-                    Text('${result['totalResponse']}'),
+                    const Text('Total Responses', style: TextStyle(color: AppColors.textPrimary)),
+                    Text('${result['totalResponse']}', style: const TextStyle(color: AppColors.textPrimary)),
                   ]),
                   const SizedBox(height: 8),
                   Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: <Widget>[
-                    const Text('Success Rate'),
-                    Text('${(result['successRate'] as double).toStringAsFixed(1)}%'),
+                    const Text('Success Rate', style: TextStyle(color: AppColors.textPrimary)),
+                    Text('${(result['successRate'] as double).toStringAsFixed(1)}%', style: const TextStyle(color: AppColors.textPrimary)),
                   ]),
                 ],
               ),
@@ -352,7 +371,7 @@ class _FieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
-    child: Text(text, style: const TextStyle(color: AppColors.primaryColor, fontSize: 13, fontWeight: FontWeight.w500)),
+    child: Text(text, style: const TextStyle(color: AppColors.textMuted, fontSize: 13, fontWeight: FontWeight.w500)),
   );
 }
 
@@ -360,9 +379,15 @@ class _PassFailButton extends StatelessWidget {
   final String label;
   final IconData icon;
   final Color color;
+  final Color borderColor;
+  final Color selectedBg;
   final bool selected;
   final VoidCallback onTap;
-  const _PassFailButton({required this.label, required this.icon, required this.color, required this.selected, required this.onTap});
+  const _PassFailButton({
+    required this.label, required this.icon, required this.color,
+    required this.borderColor, required this.selectedBg,
+    required this.selected, required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -371,8 +396,8 @@ class _PassFailButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: selected ? color.withOpacity(0.15) : Colors.white,
-          border: Border.all(color: color, width: 1.5),
+          color: selected ? selectedBg : AppColors.bgCard,
+          border: Border.all(color: borderColor, width: 1.5),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[

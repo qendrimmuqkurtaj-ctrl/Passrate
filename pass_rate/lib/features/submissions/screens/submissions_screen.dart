@@ -64,11 +64,11 @@ class SubmissionsScreen extends StatelessWidget {
     final SubmissionsController c = Get.put(SubmissionsController());
 
     return Scaffold(
-      backgroundColor: AppColors.bgColor,
+      backgroundColor: AppColors.bgPrimary,
       appBar: AppBar(
-        backgroundColor: Colors.white, elevation: 0,
-        leading: IconButton(icon: const Icon(Icons.arrow_back, color: AppColors.primaryColor), onPressed: () => Get.back()),
-        title: const Text('My Submissions', style: TextStyle(color: AppColors.primaryColor, fontWeight: FontWeight.w600, fontSize: 16)),
+        backgroundColor: AppColors.bgSecondary, elevation: 0,
+        leading: IconButton(icon: const Icon(Icons.arrow_back, color: AppColors.accent), onPressed: () => Get.back()),
+        title: const Text('My Submissions', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 16)),
         centerTitle: true,
       ),
       body: Padding(
@@ -77,12 +77,13 @@ class SubmissionsScreen extends StatelessWidget {
           children: <Widget>[
             Obx(() => TextField(
               controller: c.searchController,
+              style: const TextStyle(color: AppColors.textPrimary),
               onChanged: (String v) => c.searchQuery.value = v,
               decoration: InputDecoration(
                 hintText: 'Search',
-                prefixIcon: const Icon(CupertinoIcons.search, color: AppColors.primaryColor),
+                prefixIcon: const Icon(CupertinoIcons.search, color: AppColors.accent),
                 suffixIcon: c.searchQuery.value.isNotEmpty
-                  ? IconButton(icon: const Icon(CupertinoIcons.clear, color: AppColors.primaryColor), onPressed: c.clearSearch)
+                  ? IconButton(icon: const Icon(CupertinoIcons.clear, color: AppColors.accent), onPressed: c.clearSearch)
                   : null,
               ),
             )),
@@ -98,15 +99,15 @@ class SubmissionsScreen extends StatelessWidget {
             const SizedBox(height: 12),
             Expanded(
               child: Obx(() {
-                if (c.loading.value) return const Center(child: CircularProgressIndicator(color: AppColors.primaryColor));
+                if (c.loading.value) return const Center(child: CircularProgressIndicator(color: AppColors.accent));
                 if (c.filtered.isEmpty) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: <Widget>[
-                        Icon(CupertinoIcons.airplane, size: 60, color: AppColors.primaryColor.withOpacity(0.3)),
+                        Icon(CupertinoIcons.airplane, size: 60, color: AppColors.accent.withValues(alpha: 0.3)),
                         const SizedBox(height: 16),
-                        Text(c.searchQuery.value.isNotEmpty ? 'Ingen treff' : 'Ingen submissions ennå', style: const TextStyle(color: Colors.grey), textAlign: TextAlign.center),
+                        Text(c.searchQuery.value.isNotEmpty ? 'Ingen treff' : 'Ingen submissions ennå', style: const TextStyle(color: AppColors.textMuted), textAlign: TextAlign.center),
                       ],
                     ),
                   );
@@ -131,13 +132,14 @@ class SubmissionsScreen extends StatelessWidget {
   void _confirmDelete(BuildContext context, SubmissionsController c, Map<String, dynamic> sub) {
     showModalBottomSheet<void>(
       context: context,
+      backgroundColor: AppColors.bgCard,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (BuildContext ctx) => Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const Text('Vil du slette denne?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            const Text('Vil du slette denne?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
             const SizedBox(height: 20),
             Row(children: <Widget>[
               Expanded(child: ElevatedButton(onPressed: () { Navigator.pop(ctx); c.deleteSubmission(sub); }, child: const Text('Ja'))),
@@ -169,33 +171,33 @@ class _SubmissionTile extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.primaryColor)),
+      decoration: BoxDecoration(color: AppColors.bgCard, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: <Widget>[
             Expanded(child: Text(submission['airline'] as String? ?? '—', style: Theme.of(context).textTheme.titleMedium)),
-            IconButton(icon: const Icon(CupertinoIcons.delete, color: AppColors.red, size: 20), onPressed: onDelete),
+            IconButton(icon: const Icon(CupertinoIcons.delete, color: AppColors.failText, size: 20), onPressed: onDelete),
           ]),
-          Text(formattedDate, style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 13, color: Colors.grey)),
+          Text(formattedDate, style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 13, color: AppColors.textMuted)),
           const SizedBox(height: 12),
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: <Widget>[
-            const Text('Status:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            const Text('Status:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary)),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: isPassed ? AppColors.green.withOpacity(0.1) : AppColors.red.withOpacity(0.1),
+                color: isPassed ? AppColors.passBg : AppColors.failBg,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: isPassed ? AppColors.green : AppColors.red),
+                border: Border.all(color: isPassed ? AppColors.passBorder : AppColors.failBorder),
               ),
-              child: Text(isPassed ? 'passed' : 'failed', style: TextStyle(color: isPassed ? AppColors.green : AppColors.red, fontWeight: FontWeight.bold, fontSize: 13)),
+              child: Text(isPassed ? 'passed' : 'failed', style: TextStyle(color: isPassed ? AppColors.passText : AppColors.failText, fontWeight: FontWeight.bold, fontSize: 13)),
             ),
           ]),
           if (assessments.isNotEmpty) ...<Widget>[
             const SizedBox(height: 12),
-            const Text('Assessment:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            const Text('Assessment:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary)),
             const SizedBox(height: 6),
-            ...assessments.map((dynamic a) => Text('- ${a.toString()[0].toUpperCase()}${a.toString().substring(1)}', style: const TextStyle(fontSize: 13))),
+            ...assessments.map((dynamic a) => Text('- ${a.toString()[0].toUpperCase()}${a.toString().substring(1)}', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary))),
           ],
         ],
       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../home/screens/home_screen.dart';
+import '../../../core/design/app_colors.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -31,7 +32,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF002454),
+      backgroundColor: AppColors.bgPrimary,
       body: Stack(
         children: <Widget>[
           Positioned.fill(child: CustomPaint(painter: _DotMapPainter())),
@@ -58,12 +59,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
                   const SizedBox(height: 40),
                   const Text(
                     'Know Before\nYou Go!',
-                    style: TextStyle(color: Colors.white, fontSize: 38, fontWeight: FontWeight.bold, height: 1.15),
+                    style: TextStyle(color: AppColors.textPrimary, fontSize: 38, fontWeight: FontWeight.bold, height: 1.15),
                   ),
                   const SizedBox(height: 16),
-                  Text(
+                  const Text(
                     'Explore real airline assessments\nand pass rates',
-                    style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 16, height: 1.5),
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 16, height: 1.5),
                   ),
                   const Spacer(),
                   SizedBox(
@@ -71,7 +72,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
                     child: ElevatedButton(
                       onPressed: () => Get.off(() => const HomeScreen(), transition: Transition.fadeIn),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1A9EF5),
+                        backgroundColor: AppColors.accent,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 18),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -94,7 +95,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
 class _DotMapPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()..color = Colors.white.withOpacity(0.06)..strokeWidth = 1.5;
+    final Paint paint = Paint()..color = AppColors.accent.withValues(alpha: 0.07)..strokeWidth = 1.5;
     for (double x = 0; x < size.width; x += 14) {
       for (double y = 0; y < size.height; y += 14) {
         canvas.drawCircle(Offset(x, y), 1.2, paint);

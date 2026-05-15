@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../home/screens/home_screen.dart';
 import 'onboarding_screen.dart';
+import '../../../core/design/app_colors.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -34,13 +35,15 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF002454),
+      backgroundColor: AppColors.bgPrimary,
       body: FadeTransition(
         opacity: _fadeAnim,
         child: Center(
           child: Image.asset(
             'assets/images/logo_with_text.png',
-            width: 220,
+            width: 230,
+            color: const Color(0xFF071525),
+            colorBlendMode: BlendMode.dstIn,
             errorBuilder: (BuildContext c, Object e, StackTrace? s) => const Text(
               'PassRate',
               style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold),

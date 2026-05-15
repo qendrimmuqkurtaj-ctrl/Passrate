@@ -12,13 +12,13 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.bgColor,
+      backgroundColor: AppColors.bgPrimary,
       body: Column(
         children: <Widget>[
           Container(
             width: double.infinity,
             decoration: const BoxDecoration(
-              color: AppColors.primaryColor,
+              color: Colors.transparent,
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(36),
                 bottomRight: Radius.circular(36),
@@ -30,6 +30,8 @@ class HomeScreen extends StatelessWidget {
                 'assets/images/logo_with_text.png',
                 height: 300,
                 fit: BoxFit.contain,
+                color: const Color(0xFF071525),
+                colorBlendMode: BlendMode.dstIn,
                 errorBuilder: (BuildContext c, Object e, StackTrace? s) => const Text(
                   'PassRate',
                   style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold),
@@ -86,22 +88,22 @@ class _HomeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: AppColors.bgCard,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        splashColor: AppColors.primaryColor.withOpacity(0.1),
+        splashColor: AppColors.accent.withValues(alpha: 0.1),
         onTap: onTap,
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.primaryColor),
+            border: Border.all(color: AppColors.border),
           ),
           child: Row(
             children: <Widget>[
-              Icon(icon, color: AppColors.primaryColor, size: 28),
+              Icon(icon, color: AppColors.accent, size: 28),
               const SizedBox(width: 16),
               Text(label, style: Theme.of(context).textTheme.titleMedium),
             ],

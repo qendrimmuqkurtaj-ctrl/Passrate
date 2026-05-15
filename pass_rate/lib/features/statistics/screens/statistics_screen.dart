@@ -12,11 +12,11 @@ class StatisticsScreen extends StatelessWidget {
     final StatisticsController c = Get.put(StatisticsController());
 
     return Scaffold(
-      backgroundColor: AppColors.bgColor,
+      backgroundColor: AppColors.bgPrimary,
       appBar: AppBar(
-        backgroundColor: Colors.white, elevation: 0,
-        leading: IconButton(icon: const Icon(Icons.arrow_back, color: AppColors.primaryColor), onPressed: () => Get.back()),
-        title: const Text('Statistics Overview', style: TextStyle(color: AppColors.primaryColor, fontWeight: FontWeight.w600, fontSize: 16)),
+        backgroundColor: AppColors.bgSecondary, elevation: 0,
+        leading: IconButton(icon: const Icon(Icons.arrow_back, color: AppColors.accent), onPressed: () => Get.back()),
+        title: const Text('Statistics Overview', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 16)),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -26,7 +26,7 @@ class StatisticsScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             const Text('Check Pass Rates & Assessment Content',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black)),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
             const SizedBox(height: 20),
 
             // Airline dropdown
@@ -58,7 +58,7 @@ class StatisticsScreen extends StatelessWidget {
             }),
 
             const SizedBox(height: 8),
-            const Text('Top Results', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black)),
+            const Text('Top Results', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
             const SizedBox(height: 12),
 
             Obx(() => _buildTopCard(
@@ -95,23 +95,27 @@ class StatisticsScreen extends StatelessWidget {
       return const Center(child: CircularProgressIndicator());
     }
     return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.primaryColor)),
+      decoration: BoxDecoration(color: AppColors.bgCard, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           const Padding(
             padding: EdgeInsets.only(top: 8),
-            child: Text('Airline Name', style: TextStyle(color: AppColors.primaryColor, fontSize: 12, fontWeight: FontWeight.w500)),
+            child: Text('Airline Name', style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w500)),
           ),
           DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               isExpanded: true,
-              hint: const Text('Choose the Airline Name', style: TextStyle(color: AppColors.primaryColor, fontSize: 14)),
+              hint: const Text('Choose the Airline Name', style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
               value: c.selectedAirlineName.value.isEmpty ? null : c.selectedAirlineName.value,
-              icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.primaryColor),
+              icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.accent),
+              dropdownColor: AppColors.bgCard,
               items: c.assessmentController.airlines.map((Map<String, dynamic> a) =>
-                DropdownMenuItem<String>(value: a['name'] as String, child: Text(a['name'] as String))).toList(),
+                DropdownMenuItem<String>(
+                  value: a['name'] as String,
+                  child: Text(a['name'] as String, style: const TextStyle(color: AppColors.textPrimary)),
+                )).toList(),
               onChanged: (String? v) { if (v != null) c.selectedAirlineName.value = v; },
             ),
           ),
@@ -125,15 +129,15 @@ class StatisticsScreen extends StatelessWidget {
       onTap: () => _showYearPickerDialog(context, c),
       child: Container(
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.primaryColor)),
+        decoration: BoxDecoration(color: AppColors.bgCard, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            const Text('Select Year', style: TextStyle(color: AppColors.primaryColor, fontSize: 12, fontWeight: FontWeight.w500)),
+            const Text('Select Year', style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w500)),
             Row(
               children: <Widget>[
-                Expanded(child: Text('${c.searchYear.value}', style: const TextStyle(fontSize: 14))),
-                const Icon(CupertinoIcons.calendar, color: AppColors.primaryColor, size: 18),
+                Expanded(child: Text('${c.searchYear.value}', style: const TextStyle(fontSize: 14, color: AppColors.textPrimary))),
+                const Icon(CupertinoIcons.calendar, color: AppColors.accent, size: 18),
               ],
             ),
           ],
@@ -145,22 +149,23 @@ class StatisticsScreen extends StatelessWidget {
   void _showYearPickerDialog(BuildContext context, StatisticsController c) {
     final List<int> years = List<int>.generate(DateTime.now().year + 1 - 2024 + 1, (int i) => DateTime.now().year + 1 - i);
     Get.dialog(Dialog(
+      backgroundColor: AppColors.bgCard,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Container(
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.primaryColor, width: 2)),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border, width: 2)),
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const Text('Select Year', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.primaryColor, fontSize: 16)),
+            const Text('Select Year', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary, fontSize: 16)),
             const SizedBox(height: 12),
             SizedBox(
               height: 200,
               child: ListView.builder(
                 itemCount: years.length,
                 itemBuilder: (BuildContext ctx, int i) => ListTile(
-                  title: Text('${years[i]}'),
-                  trailing: c.searchYear.value == years[i] ? const Icon(CupertinoIcons.check_mark, color: AppColors.primaryColor) : null,
+                  title: Text('${years[i]}', style: const TextStyle(color: AppColors.textPrimary)),
+                  trailing: c.searchYear.value == years[i] ? const Icon(CupertinoIcons.check_mark, color: AppColors.accent) : null,
                   onTap: () {
                     c.searchYear.value = years[i];
                     Get.back();
@@ -168,7 +173,7 @@ class StatisticsScreen extends StatelessWidget {
                 ),
               ),
             ),
-            OutlinedButton(onPressed: () => Get.back(), child: const Text('Cancel', style: TextStyle(color: AppColors.red))),
+            OutlinedButton(onPressed: () => Get.back(), child: const Text('Cancel', style: TextStyle(color: AppColors.failText))),
           ],
         ),
       ),
@@ -184,31 +189,31 @@ class StatisticsScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        const Text('Search Result', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
+        const Text('Search Result', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.primaryColor)),
+          decoration: BoxDecoration(color: AppColors.bgCard, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(stats['airlineName'] as String, style: Theme.of(context).textTheme.titleMedium),
-              Text('${stats['year']}', style: const TextStyle(color: AppColors.primaryColor, fontSize: 13)),
+              Text('${stats['year']}', style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
               const SizedBox(height: 16),
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: <Widget>[
-                const Text('Total Responses'),
-                Text('${stats['totalSubmissions']}'),
+                const Text('Total Responses', style: TextStyle(color: AppColors.textPrimary)),
+                Text('${stats['totalSubmissions']}', style: const TextStyle(color: AppColors.textPrimary)),
               ]),
               const SizedBox(height: 8),
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: <Widget>[
-                const Text('Success Rate'),
+                const Text('Success Rate', style: TextStyle(color: AppColors.textPrimary)),
                 Text('${(stats['successRate'] as double).toStringAsFixed(1)}%',
-                  style: const TextStyle(color: AppColors.primaryColor, fontWeight: FontWeight.w600)),
+                  style: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600)),
               ]),
               const SizedBox(height: 16),
 
-              // Monthly bar chart - fixed overflow
-              const Text('Monthly Distribution', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+              // Monthly bar chart
+              const Text('Monthly Distribution', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.textPrimary)),
               const SizedBox(height: 12),
               SizedBox(
                 height: 100,
@@ -222,18 +227,18 @@ class StatisticsScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: <Widget>[
                           if (count > 0)
-                            Text('$count', style: const TextStyle(fontSize: 8, color: AppColors.primaryColor)),
+                            Text('$count', style: const TextStyle(fontSize: 8, color: AppColors.accent)),
                           const SizedBox(height: 2),
                           Container(
                             height: barHeight,
                             margin: const EdgeInsets.symmetric(horizontal: 1),
                             decoration: BoxDecoration(
-                              color: count > 0 ? AppColors.primaryColor : Colors.grey.shade200,
+                              color: count > 0 ? AppColors.accent : AppColors.border,
                               borderRadius: BorderRadius.circular(2),
                             ),
                           ),
                           const SizedBox(height: 4),
-                          Text(months[i], style: const TextStyle(fontSize: 7, color: Colors.grey)),
+                          Text(months[i], style: const TextStyle(fontSize: 7, color: AppColors.textMuted)),
                         ],
                       ),
                     );
@@ -244,11 +249,11 @@ class StatisticsScreen extends StatelessWidget {
               if (assessments.isNotEmpty) ...<Widget>[
                 const SizedBox(height: 16),
                 const Divider(),
-                const Text('Assessment Content', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                const Text('Assessment Content', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.textPrimary)),
                 const SizedBox(height: 8),
                 ...assessments.map((String a) => Padding(
                   padding: const EdgeInsets.only(bottom: 4),
-                  child: Text('• ${a[0].toUpperCase()}${a.substring(1)}', style: const TextStyle(fontSize: 14)),
+                  child: Text('• ${a[0].toUpperCase()}${a.substring(1)}', style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
                 )),
               ],
             ],
@@ -271,22 +276,22 @@ class StatisticsScreen extends StatelessWidget {
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.primaryColor)),
+      decoration: BoxDecoration(color: AppColors.bgCard, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: <Widget>[
-              Expanded(child: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primaryColor))),
+              Expanded(child: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textMuted))),
               GestureDetector(
                 onTap: () => _showYearDialog(context, selectedYear, onYearSelected),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(4), border: Border.all(color: AppColors.primaryColor)),
+                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(4), border: Border.all(color: AppColors.accent)),
                   child: Row(children: <Widget>[
-                    Text('$selectedYear', style: const TextStyle(fontSize: 12, color: AppColors.primaryColor)),
-                    const Icon(CupertinoIcons.chevron_down, size: 10, color: AppColors.primaryColor),
+                    Text('$selectedYear', style: const TextStyle(fontSize: 12, color: AppColors.accent)),
+                    const Icon(CupertinoIcons.chevron_down, size: 10, color: AppColors.accent),
                   ]),
                 ),
               ),
@@ -294,7 +299,7 @@ class StatisticsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Row(children: <Widget>[
-            Container(height: 5, width: 50, color: AppColors.primaryColor),
+            Container(height: 5, width: 50, color: AppColors.accent),
             const SizedBox(width: 4),
             const Expanded(child: Divider()),
           ]),
@@ -302,7 +307,7 @@ class StatisticsScreen extends StatelessWidget {
           if (isLoading)
             const Center(child: CircularProgressIndicator())
           else if (items.isEmpty)
-            const Text('No data for the selected year', style: TextStyle(color: Colors.grey, fontSize: 13))
+            const Text('No data for the selected year', style: TextStyle(color: AppColors.textMuted, fontSize: 13))
           else
             ...items.asMap().entries.map((MapEntry<int, Map<String, dynamic>> entry) => Column(
               children: <Widget>[
@@ -312,8 +317,8 @@ class StatisticsScreen extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: <Widget>[
-                      Text(nameBuilder(entry.value), style: const TextStyle(fontSize: 14)),
-                      Text(valueBuilder(entry.value), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primaryColor)),
+                      Text(nameBuilder(entry.value), style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
+                      Text(valueBuilder(entry.value), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.accent)),
                     ],
                   ),
                 ),
@@ -327,27 +332,28 @@ class StatisticsScreen extends StatelessWidget {
   void _showYearDialog(BuildContext context, int currentYear, Function(int) onSelected) {
     final List<int> years = List<int>.generate(DateTime.now().year + 1 - 2024 + 1, (int i) => DateTime.now().year + 1 - i);
     Get.dialog(Dialog(
+      backgroundColor: AppColors.bgCard,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Container(
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.primaryColor, width: 2)),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border, width: 2)),
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const Text('Select Year', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.primaryColor)),
+            const Text('Select Year', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
             const SizedBox(height: 12),
             SizedBox(
               height: 200,
               child: ListView.builder(
                 itemCount: years.length,
                 itemBuilder: (BuildContext ctx, int i) => ListTile(
-                  title: Text('${years[i]}'),
-                  trailing: currentYear == years[i] ? const Icon(CupertinoIcons.check_mark, color: AppColors.primaryColor) : null,
+                  title: Text('${years[i]}', style: const TextStyle(color: AppColors.textPrimary)),
+                  trailing: currentYear == years[i] ? const Icon(CupertinoIcons.check_mark, color: AppColors.accent) : null,
                   onTap: () { Get.back(); onSelected(years[i]); },
                 ),
               ),
             ),
-            OutlinedButton(onPressed: () => Get.back(), child: const Text('Cancel', style: TextStyle(color: AppColors.red))),
+            OutlinedButton(onPressed: () => Get.back(), child: const Text('Cancel', style: TextStyle(color: AppColors.failText))),
           ],
         ),
       ),
