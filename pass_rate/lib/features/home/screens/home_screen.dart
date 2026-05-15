@@ -28,11 +28,11 @@ class HomeScreen extends StatelessWidget {
             child: Center(
               child: Image.asset(
                 'assets/images/logo_with_text.png',
-                height: 120,
+                height: 300,
                 fit: BoxFit.contain,
                 errorBuilder: (BuildContext c, Object e, StackTrace? s) => const Text(
                   'PassRate',
-                  style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
