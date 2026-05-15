@@ -2,8 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../home/screens/home_screen.dart';
 
-class OnboardingScreen extends StatelessWidget {
+class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
+
+  @override
+  State<OnboardingScreen> createState() => _OnboardingScreenState();
+}
+
+class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Offset> _slideAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+    _slideAnim = Tween<Offset>(begin: const Offset(1.5, 0.0), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,13 +37,16 @@ class OnboardingScreen extends StatelessWidget {
           Positioned.fill(child: CustomPaint(painter: _DotMapPainter())),
           // Fly høyere opp
           Positioned(
-            bottom: 120,
+            bottom: 200,
             right: -20,
-            child: Image.asset(
-              'assets/images/aeroplane_image.png',
-              width: 280,
-              errorBuilder: (BuildContext c, Object e, StackTrace? s) =>
-                  const Icon(Icons.flight, color: Colors.white24, size: 160),
+            child: SlideTransition(
+              position: _slideAnim,
+              child: Image.asset(
+                'assets/images/aeroplane_image.png',
+                width: 280,
+                errorBuilder: (BuildContext c, Object e, StackTrace? s) =>
+                    const Icon(Icons.flight, color: Colors.white24, size: 160),
+              ),
             ),
           ),
           SafeArea(
