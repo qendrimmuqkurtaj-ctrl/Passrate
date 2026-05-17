@@ -1,14 +1,100 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:get/get.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'firebase_options.dart';
 import 'core/design/app_colors.dart';
 import 'features/splash/splash_screen.dart';
+
+const _appStoreId = '6754942459';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const PassRateApp());
+  WidgetsBinding.instance.addPostFrameCallback((_) => _checkForUpdate());
+}
+
+Future<void> _checkForUpdate() async {
+  try {
+    final info = await PackageInfo.fromPlatform();
+    final currentVersion = info.version;
+
+    final client = HttpClient();
+    final request = await client.getUrl(
+      Uri.parse('https://itunes.apple.com/lookup?id=$_appStoreId'),
+    );
+    final response = await request.close();
+    final body = await response.transform(utf8.decoder).join();
+    client.close();
+
+    final data = jsonDecode(body) as Map<String, dynamic>;
+    final results = data['results'] as List<dynamic>;
+    if (results.isEmpty) return;
+
+    final storeVersion = results[0]['version'] as String;
+    if (_isNewerVersion(storeVersion, currentVersion)) {
+      Get.dialog(
+        AlertDialog(
+          backgroundColor: AppColors.bgCard,
+          title: const Text(
+            'New Update Available',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'satoshi',
+            ),
+          ),
+          content: Text(
+            'Version $storeVersion is available. Update now to get the latest features and improvements.',
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontFamily: 'satoshi',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Get.back(),
+              child: const Text(
+                'Later',
+                style: TextStyle(
+                  color: AppColors.textMuted,
+                  fontFamily: 'satoshi',
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final uri = Uri.parse(
+                  'https://apps.apple.com/app/id$_appStoreId',
+                );
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+              child: const Text('Update Now'),
+            ),
+          ],
+        ),
+      );
+    }
+  } catch (_) {}
+}
+
+bool _isNewerVersion(String storeVersion, String currentVersion) {
+  final store = storeVersion.split('.').map((p) => int.tryParse(p) ?? 0).toList();
+  final current = currentVersion.split('.').map((p) => int.tryParse(p) ?? 0).toList();
+  final maxLen = store.length > current.length ? store.length : current.length;
+  for (int i = 0; i < maxLen; i++) {
+    final s = i < store.length ? store[i] : 0;
+    final c = i < current.length ? current[i] : 0;
+    if (s > c) return true;
+    if (s < c) return false;
+  }
+  return false;
 }
 
 class PassRateApp extends StatelessWidget {
