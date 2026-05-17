@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -161,12 +160,18 @@ class _SubmissionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isPassed = submission['passed'] == true || submission['result'] == 'passed' || submission['status'] == 'passed';
-    final dynamic createdAt = submission['createdAt'];
-    DateTime? date;
-    if (createdAt is Timestamp) {
-      date = createdAt.toDate();
+    final dynamic month = submission['month'];
+    final dynamic year = submission['year'];
+    String formattedDate = '—';
+    if (month != null && year != null) {
+      try {
+        formattedDate = DateFormat('MMMM yyyy').format(DateTime(int.parse(year.toString()), int.parse(month.toString())));
+      } catch (_) {
+        formattedDate = '$month $year';
+      }
+    } else if (year != null) {
+      formattedDate = year.toString();
     }
-    final String formattedDate = date != null ? DateFormat('yyyy - MMMM').format(date) : '${submission['year'] ?? '—'}';
     final List<dynamic> assessments = submission['assessments'] as List<dynamic>? ?? <dynamic>[];
 
     return Container(
