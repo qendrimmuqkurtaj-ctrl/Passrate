@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../assessment/screens/submit_assessment_screen.dart';
+import '../../salary/screens/salary_screen.dart';
 import '../../statistics/screens/statistics_screen.dart';
 import '../../submissions/screens/submissions_screen.dart';
 import '../../../core/design/app_colors.dart';
@@ -100,6 +101,12 @@ class HomeScreen extends StatelessWidget {
                     label: 'Your Submissions',
                     icon: Icons.description_outlined,
                     onTap: () => Get.to(() => const SubmissionsScreen()),
+                  ),
+                  const SizedBox(height: 16),
+                  _HomeTile(
+                    label: 'Pilot Salaries',
+                    icon: Icons.monetization_on_outlined,
+                    onTap: () => Get.to(() => const SalaryScreen()),
                   ),
                   const SizedBox(height: 16),
                   _HomeTile(

@@ -197,6 +197,76 @@ class FirebaseService {
     }
   }
 
+  static Future<Map<String, dynamic>?> getDeviceSalarySubmission(String deviceId) async {
+    try {
+      final QuerySnapshot snap = await _db
+          .collection('salaries')
+          .where('deviceId', isEqualTo: deviceId)
+          .limit(1)
+          .get();
+      if (snap.docs.isEmpty) return null;
+      final DocumentSnapshot doc = snap.docs.first;
+      final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+      final dynamic ts = data['createdAt'];
+      return <String, dynamic>{
+        'id': doc.id,
+        ...data,
+        'createdAt': ts != null ? (ts as Timestamp).toDate() : null,
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getAllSalaries() async {
+    try {
+      final QuerySnapshot snap = await _db.collection('salaries').get();
+      final List<Map<String, dynamic>> list = snap.docs
+          .map((DocumentSnapshot d) => {'id': d.id, ...d.data() as Map<String, dynamic>})
+          .toList();
+      list.sort((Map<String, dynamic> a, Map<String, dynamic> b) =>
+          (a['airline'] as String? ?? '').compareTo(b['airline'] as String? ?? ''));
+      return list;
+    } catch (e) {
+      return <Map<String, dynamic>>[];
+    }
+  }
+
+  static Future<void> submitSalary({
+    required String deviceId,
+    required String airlineId,
+    required String airlineName,
+    required String rank,
+    required int seniorityYears,
+    required String aircraftType,
+    required String contractType,
+    required double baseSalary,
+    required double perDiem,
+    required String country,
+    required String currency,
+    String? existingDocId,
+  }) async {
+    final Map<String, dynamic> data = <String, dynamic>{
+      'deviceId': deviceId,
+      'airlineId': airlineId,
+      'airline': airlineName,
+      'rank': rank,
+      'seniorityYears': seniorityYears,
+      'aircraftType': aircraftType,
+      'contractType': contractType,
+      'baseSalary': baseSalary,
+      'perDiem': perDiem,
+      'country': country,
+      'currency': currency,
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+    if (existingDocId != null) {
+      await _db.collection('salaries').doc(existingDocId).set(data);
+    } else {
+      await _db.collection('salaries').add(data);
+    }
+  }
+
   static Future<int> getTotalSubmissionsCount() async {
     try {
       final AggregateQuerySnapshot snap =
