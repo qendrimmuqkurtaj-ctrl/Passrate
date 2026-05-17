@@ -4,6 +4,18 @@ import 'package:get/get.dart';
 import '../../../core/design/app_colors.dart';
 import '../../../core/services/firebase_service.dart';
 
+const Map<String, List<String>> _countryBases = <String, List<String>>{
+  'Norway':  <String>['Oslo', 'Bergen', 'Stavanger', 'Trondheim'],
+  'UK':      <String>['London', 'Manchester', 'Birmingham', 'Edinburgh'],
+  'Germany': <String>['Frankfurt', 'Munich', 'Berlin', 'Hamburg', 'Düsseldorf'],
+  'Sweden':  <String>['Stockholm', 'Gothenburg', 'Malmö'],
+  'Denmark': <String>['Copenhagen', 'Aarhus'],
+  'Finland': <String>['Helsinki', 'Tampere'],
+  'Ireland': <String>['Dublin', 'Shannon'],
+  'UAE':     <String>['Dubai', 'Abu Dhabi'],
+  'Qatar':   <String>['Doha'],
+};
+
 class SubmitSalaryController extends GetxController {
   final RxBool loadingAirlines = true.obs;
   final RxBool submitting = false.obs;
@@ -15,11 +27,18 @@ class SubmitSalaryController extends GetxController {
   final RxString selectedAircraftType = ''.obs;
   final RxString selectedContractType = ''.obs;
   final RxString selectedCurrency = ''.obs;
+  final RxString selectedCountry = ''.obs;
+  final RxString selectedBase = ''.obs;
 
   final TextEditingController seniorityController = TextEditingController();
   final TextEditingController baseSalaryController = TextEditingController();
   final TextEditingController perDiemController = TextEditingController();
-  final TextEditingController countryController = TextEditingController();
+  final TextEditingController baseController = TextEditingController();
+
+  bool get _baseCompleted {
+    if (selectedCountry.value == 'Other') return baseController.text.trim().isNotEmpty;
+    return selectedBase.value.isNotEmpty;
+  }
 
   bool get allCompleted =>
       selectedAirline.value != null &&
@@ -29,13 +48,21 @@ class SubmitSalaryController extends GetxController {
       selectedContractType.value.isNotEmpty &&
       baseSalaryController.text.isNotEmpty &&
       perDiemController.text.isNotEmpty &&
-      countryController.text.trim().isNotEmpty &&
+      selectedCountry.value.isNotEmpty &&
+      _baseCompleted &&
       selectedCurrency.value.isNotEmpty;
+
+  void selectCountry(String? country) {
+    selectedCountry.value = country ?? '';
+    selectedBase.value = '';
+    baseController.clear();
+    update();
+  }
 
   @override
   void onInit() {
     super.onInit();
-    _loadAirlines();
+    fetchAirlines();
   }
 
   @override
@@ -43,14 +70,17 @@ class SubmitSalaryController extends GetxController {
     seniorityController.dispose();
     baseSalaryController.dispose();
     perDiemController.dispose();
-    countryController.dispose();
+    baseController.dispose();
     super.onClose();
   }
 
-  Future<void> _loadAirlines() async {
+  Future<void> fetchAirlines() async {
     loadingAirlines.value = true;
-    airlines.value = await FirebaseService.getAirlines();
-    loadingAirlines.value = false;
+    try {
+      airlines.value = await FirebaseService.getAirlines();
+    } finally {
+      loadingAirlines.value = false;
+    }
   }
 
   Future<bool> submit() async {
@@ -68,7 +98,10 @@ class SubmitSalaryController extends GetxController {
         contractType: selectedContractType.value,
         baseSalary: double.tryParse(baseSalaryController.text) ?? 0,
         perDiem: double.tryParse(perDiemController.text) ?? 0,
-        country: countryController.text.trim(),
+        country: selectedCountry.value,
+        base: selectedCountry.value == 'Other'
+            ? baseController.text.trim()
+            : selectedBase.value,
         currency: selectedCurrency.value,
         existingDocId: existingDocId,
       );
@@ -203,11 +236,51 @@ class SubmitSalaryScreen extends StatelessWidget {
 
             // Country
             const _FieldLabel('Country'),
-            _TextField(
-              controller: c.countryController,
-              hint: 'Enter country',
-              onChanged: (_) => c.update(),
-            ),
+            Obx(() => _Dropdown<String>(
+              hint: 'Select Country',
+              value: c.selectedCountry.value.isEmpty ? null : c.selectedCountry.value,
+              items: <String>[
+                ..._countryBases.keys,
+                'Other',
+              ].map((String country) => DropdownMenuItem<String>(
+                value: country,
+                child: Text(country, style: const TextStyle(color: AppColors.textPrimary)),
+              )).toList(),
+              onChanged: (String? v) => c.selectCountry(v),
+            )),
+            const SizedBox(height: 16),
+
+            // Base / City — dropdown for known countries, free text for Other
+            const _FieldLabel('Base/City'),
+            Obx(() {
+              final String country = c.selectedCountry.value;
+              final List<String>? cities = _countryBases[country];
+              if (country.isEmpty) {
+                return _Dropdown<String>(
+                  hint: 'Select base or city',
+                  value: null,
+                  items: const <DropdownMenuItem<String>>[],
+                  onChanged: (_) {},
+                );
+              }
+              if (cities != null) {
+                return _Dropdown<String>(
+                  hint: 'Select base or city',
+                  value: c.selectedBase.value.isEmpty ? null : c.selectedBase.value,
+                  items: cities.map((String city) => DropdownMenuItem<String>(
+                    value: city,
+                    child: Text(city, style: const TextStyle(color: AppColors.textPrimary)),
+                  )).toList(),
+                  onChanged: (String? v) { c.selectedBase.value = v ?? ''; },
+                );
+              }
+              // Other — free text
+              return _TextField(
+                controller: c.baseController,
+                hint: 'Enter base or city',
+                onChanged: (_) => c.update(),
+              );
+            }),
             const SizedBox(height: 16),
 
             // Currency

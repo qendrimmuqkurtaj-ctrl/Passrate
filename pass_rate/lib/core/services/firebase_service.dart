@@ -118,6 +118,15 @@ class FirebaseService {
     }
   }
 
+  static Future<bool> deleteSalary(String id) async {
+    try {
+      await _db.collection('salaries').doc(id).delete();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   static Future<Map<String, dynamic>?> getAirlineStatistics({
     required String airlineName,
     required int year,
@@ -243,6 +252,7 @@ class FirebaseService {
     required double baseSalary,
     required double perDiem,
     required String country,
+    required String base,
     required String currency,
     String? existingDocId,
   }) async {
@@ -257,14 +267,82 @@ class FirebaseService {
       'baseSalary': baseSalary,
       'perDiem': perDiem,
       'country': country,
+      'base': base,
       'currency': currency,
       'createdAt': FieldValue.serverTimestamp(),
     };
+    final DocumentReference docRef;
     if (existingDocId != null) {
-      await _db.collection('salaries').doc(existingDocId).set(data);
+      docRef = _db.collection('salaries').doc(existingDocId);
+      await docRef.set(data);
     } else {
-      await _db.collection('salaries').add(data);
+      docRef = await _db.collection('salaries').add(data);
     }
+
+    final String? flagReason = await _checkSalaryFlags(
+      airlineName: airlineName,
+      rank: rank,
+      aircraftType: aircraftType,
+      baseSalary: baseSalary,
+      currentDocId: docRef.id,
+    );
+    if (flagReason != null) {
+      await docRef.update(<String, dynamic>{
+        'flagged': true,
+        'flagReason': flagReason,
+      });
+    }
+  }
+
+  static Future<String?> _checkSalaryFlags({
+    required String airlineName,
+    required String rank,
+    required String aircraftType,
+    required double baseSalary,
+    required String currentDocId,
+  }) async {
+    if (baseSalary < 1000) return 'Salary unusually low (under 1000)';
+
+    final QuerySnapshot snap = await _db
+        .collection('salaries')
+        .where('airline', isEqualTo: airlineName)
+        .get();
+
+    final List<Map<String, dynamic>> others = snap.docs
+        .where((DocumentSnapshot d) => d.id != currentDocId)
+        .map((DocumentSnapshot d) => d.data() as Map<String, dynamic>)
+        .toList();
+
+    if (rank == 'SO') {
+      final Iterable<double> foSalaries = others
+          .where((Map<String, dynamic> s) => s['rank'] == 'FO')
+          .map((Map<String, dynamic> s) => (s['baseSalary'] as num?)?.toDouble() ?? 0);
+      if (foSalaries.any((double fo) => baseSalary > fo)) {
+        return 'SO salary higher than FO at same airline';
+      }
+    }
+
+    if (rank == 'Captain') {
+      final Iterable<double> foSalaries = others
+          .where((Map<String, dynamic> s) => s['rank'] == 'FO')
+          .map((Map<String, dynamic> s) => (s['baseSalary'] as num?)?.toDouble() ?? 0);
+      if (foSalaries.any((double fo) => baseSalary < fo)) {
+        return 'Captain salary lower than FO at same airline';
+      }
+    }
+
+    final List<double> peerSalaries = others
+        .where((Map<String, dynamic> s) => s['rank'] == rank && s['aircraftType'] == aircraftType)
+        .map((Map<String, dynamic> s) => (s['baseSalary'] as num?)?.toDouble() ?? 0)
+        .toList();
+    if (peerSalaries.isNotEmpty) {
+      final double avg = peerSalaries.reduce((double a, double b) => a + b) / peerSalaries.length;
+      if (avg > 0 && (baseSalary - avg).abs() / avg > 0.30) {
+        return 'Salary deviates more than 30% from peers';
+      }
+    }
+
+    return null;
   }
 
   static Future<int> getTotalSubmissionsCount() async {
