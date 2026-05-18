@@ -377,7 +377,7 @@ class SalaryScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppColors.bgSecondary,
         elevation: 0,
-        leading: Obx(() => IconButton(
+        leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.accent),
           onPressed: () {
             if (c.isJobHunting.value) {
@@ -386,7 +386,7 @@ class SalaryScreen extends StatelessWidget {
               Get.back();
             }
           },
-        )),
+        ),
         title: const Text(
           'Pilot Salaries',
           style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 16),
