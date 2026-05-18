@@ -484,7 +484,7 @@ class SalaryScreen extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             const Text(
-              "View salary ranges across European airlines to know what to expect before your first offer.",
+              "View average salary ranges across European airlines to know what to expect before your first offer.",
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.textMuted, fontSize: 12, height: 1.4),
             ),
