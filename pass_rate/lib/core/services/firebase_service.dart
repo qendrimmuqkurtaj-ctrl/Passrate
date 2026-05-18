@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'dart:convert';
 import 'dart:io';
 
 class FirebaseService {
@@ -284,6 +285,7 @@ class FirebaseService {
       rank: rank,
       aircraftType: aircraftType,
       baseSalary: baseSalary,
+      currency: currency,
       currentDocId: docRef.id,
     );
     if (flagReason != null) {
@@ -294,14 +296,46 @@ class FirebaseService {
     }
   }
 
+  static Future<Map<String, double>> _fetchRates() async {
+    try {
+      final HttpClient client = HttpClient();
+      final HttpClientRequest request = await client.getUrl(
+        Uri.parse('https://open.er-api.com/v6/latest/EUR'),
+      );
+      final HttpClientResponse response = await request.close();
+      if (response.statusCode == 200) {
+        final String body = await response.transform(utf8.decoder).join();
+        client.close();
+        final Map<String, dynamic> json = jsonDecode(body) as Map<String, dynamic>;
+        if (json['result'] == 'success') {
+          final Map<String, dynamic> r = json['rates'] as Map<String, dynamic>;
+          return r.map((String k, dynamic v) => MapEntry(k, (v as num).toDouble()));
+        }
+      } else {
+        client.close();
+      }
+    } catch (_) {}
+    return <String, double>{};
+  }
+
+  static double _toEurAmount(double amount, String currency, Map<String, double> rates) {
+    if (currency == 'EUR') return amount;
+    final double rate = rates[currency] ?? 0;
+    return rate > 0 ? amount / rate : amount;
+  }
+
   static Future<String?> _checkSalaryFlags({
     required String airlineName,
     required String rank,
     required String aircraftType,
     required double baseSalary,
+    required String currency,
     required String currentDocId,
   }) async {
-    if (baseSalary < 1000) return 'Salary unusually low (under 1000)';
+    final Map<String, double> rates = await _fetchRates();
+    final double baseSalaryEur = _toEurAmount(baseSalary, currency, rates);
+
+    if (baseSalaryEur < 1000) return 'Salary unusually low (under 1,000 EUR)';
 
     final QuerySnapshot snap = await _db
         .collection('salaries')
@@ -316,8 +350,12 @@ class FirebaseService {
     if (rank == 'SO') {
       final Iterable<double> foSalaries = others
           .where((Map<String, dynamic> s) => s['rank'] == 'FO')
-          .map((Map<String, dynamic> s) => (s['baseSalary'] as num?)?.toDouble() ?? 0);
-      if (foSalaries.any((double fo) => baseSalary > fo)) {
+          .map((Map<String, dynamic> s) => _toEurAmount(
+                (s['baseSalary'] as num?)?.toDouble() ?? 0,
+                s['currency'] as String? ?? 'EUR',
+                rates,
+              ));
+      if (foSalaries.any((double fo) => baseSalaryEur > fo)) {
         return 'SO salary higher than FO at same airline';
       }
     }
@@ -325,19 +363,27 @@ class FirebaseService {
     if (rank == 'Captain') {
       final Iterable<double> foSalaries = others
           .where((Map<String, dynamic> s) => s['rank'] == 'FO')
-          .map((Map<String, dynamic> s) => (s['baseSalary'] as num?)?.toDouble() ?? 0);
-      if (foSalaries.any((double fo) => baseSalary < fo)) {
+          .map((Map<String, dynamic> s) => _toEurAmount(
+                (s['baseSalary'] as num?)?.toDouble() ?? 0,
+                s['currency'] as String? ?? 'EUR',
+                rates,
+              ));
+      if (foSalaries.any((double fo) => baseSalaryEur < fo)) {
         return 'Captain salary lower than FO at same airline';
       }
     }
 
     final List<double> peerSalaries = others
         .where((Map<String, dynamic> s) => s['rank'] == rank && s['aircraftType'] == aircraftType)
-        .map((Map<String, dynamic> s) => (s['baseSalary'] as num?)?.toDouble() ?? 0)
+        .map((Map<String, dynamic> s) => _toEurAmount(
+              (s['baseSalary'] as num?)?.toDouble() ?? 0,
+              s['currency'] as String? ?? 'EUR',
+              rates,
+            ))
         .toList();
     if (peerSalaries.isNotEmpty) {
       final double avg = peerSalaries.reduce((double a, double b) => a + b) / peerSalaries.length;
-      if (avg > 0 && (baseSalary - avg).abs() / avg > 0.30) {
+      if (avg > 0 && (baseSalaryEur - avg).abs() / avg > 0.30) {
         return 'Salary deviates more than 30% from peers';
       }
     }
