@@ -259,13 +259,10 @@ class SubmitSalaryScreen extends StatelessWidget {
                 return const Center(child: CircularProgressIndicator(color: AppColors.accent));
               }
               final List<String> countryList = c.countries.keys.toList()..sort();
-              return _Dropdown<String>(
+              return _SearchableDropdown(
                 hint: 'Select Country',
                 value: c.selectedCountry.value.isEmpty ? null : c.selectedCountry.value,
-                items: <String>[...countryList, 'Other'].map((String country) => DropdownMenuItem<String>(
-                  value: country,
-                  child: Text(country, style: const TextStyle(color: AppColors.textPrimary)),
-                )).toList(),
+                items: <String>[...countryList, 'Other'],
                 onChanged: (String? v) => c.selectCountry(v),
               );
             }),
@@ -277,21 +274,18 @@ class SubmitSalaryScreen extends StatelessWidget {
               final String country = c.selectedCountry.value;
               final List<String>? cities = c.countries[country];
               if (country.isEmpty) {
-                return _Dropdown<String>(
+                return _SearchableDropdown(
                   hint: 'Select base or city',
                   value: null,
-                  items: const <DropdownMenuItem<String>>[],
+                  items: const <String>[],
                   onChanged: (_) {},
                 );
               }
               if (cities != null) {
-                return _Dropdown<String>(
+                return _SearchableDropdown(
                   hint: 'Select base or city',
                   value: c.selectedBase.value.isEmpty ? null : c.selectedBase.value,
-                  items: cities.map((String city) => DropdownMenuItem<String>(
-                    value: city,
-                    child: Text(city, style: const TextStyle(color: AppColors.textPrimary)),
-                  )).toList(),
+                  items: cities,
                   onChanged: (String? v) { c.selectedBase.value = v ?? ''; },
                 );
               }
