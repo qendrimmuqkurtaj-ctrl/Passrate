@@ -377,10 +377,16 @@ class SalaryScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppColors.bgSecondary,
         elevation: 0,
-        leading: IconButton(
+        leading: Obx(() => IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.accent),
-          onPressed: () => Get.back(),
-        ),
+          onPressed: () {
+            if (c.isJobHunting.value) {
+              c.isJobHunting.value = false;
+            } else {
+              Get.back();
+            }
+          },
+        )),
         title: const Text(
           'Pilot Salaries',
           style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 16),
@@ -459,7 +465,13 @@ class SalaryScreen extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 6),
+            const Text(
+              "Submit your salary once to unlock exact figures, seniority data and full details from every pilot in our database.",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12, height: 1.4),
+            ),
+            const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
@@ -469,6 +481,12 @@ class SalaryScreen extends StatelessWidget {
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
               ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              "View salary ranges across European airlines to know what to expect before your first offer.",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12, height: 1.4),
             ),
             const SizedBox(height: 24),
             const Text(
