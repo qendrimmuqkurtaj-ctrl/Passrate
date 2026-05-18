@@ -101,6 +101,7 @@ class FirebaseService {
       final QuerySnapshot snap = await _db
           .collection('submissions')
           .where('deviceId', isEqualTo: deviceId)
+          .orderBy('createdAt', descending: true)
           .get();
       return snap.docs
           .map((DocumentSnapshot d) => {'id': d.id, ...d.data() as Map<String, dynamic>})
@@ -218,10 +219,12 @@ class FirebaseService {
       final DocumentSnapshot doc = snap.docs.first;
       final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
       final dynamic ts = data['createdAt'];
+      final dynamic updatedTs = data['updatedAt'];
       return <String, dynamic>{
         'id': doc.id,
         ...data,
         'createdAt': ts != null ? (ts as Timestamp).toDate() : null,
+        'updatedAt': updatedTs != null ? (updatedTs as Timestamp).toDate() : null,
       };
     } catch (e) {
       return null;
@@ -321,7 +324,7 @@ class FirebaseService {
   static double _toEurAmount(double amount, String currency, Map<String, double> rates) {
     if (currency == 'EUR') return amount;
     final double rate = rates[currency] ?? 0;
-    return rate > 0 ? amount / rate : amount;
+    return rate > 0 ? amount / rate : 0;
   }
 
   static Future<String?> _checkSalaryFlags({
@@ -389,6 +392,14 @@ class FirebaseService {
     }
 
     return null;
+  }
+
+  static Future<void> updateSalaryTimestamp(String docId) async {
+    try {
+      await _db.collection('salaries').doc(docId).update(<String, dynamic>{
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {}
   }
 
   static Future<void> seedAircraftTypes() async {

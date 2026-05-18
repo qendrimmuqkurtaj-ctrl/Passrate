@@ -186,7 +186,7 @@ class SubmitAssessmentScreen extends StatelessWidget {
                     children: <Widget>[
                       IconButton(icon: const Icon(CupertinoIcons.chevron_left, color: AppColors.textPrimary), onPressed: () => setState(() { if (selectedYear > 2024) selectedYear--; })),
                       Text('$selectedYear', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                      IconButton(icon: const Icon(CupertinoIcons.chevron_right, color: AppColors.textPrimary), onPressed: () => setState(() { if (selectedYear <= now.year) selectedYear++; })),
+                      IconButton(icon: const Icon(CupertinoIcons.chevron_right, color: AppColors.textPrimary), onPressed: () => setState(() { if (selectedYear < now.year) selectedYear++; })),
                     ],
                   ),
                 ],
@@ -331,7 +331,10 @@ class ConfirmScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text(result['airlineName'] as String? ?? '', style: Theme.of(context).textTheme.titleMedium),
-                  Text('${result['year']}', style: Theme.of(context).textTheme.labelMedium),
+                  Text(
+                    DateFormat('MMMM yyyy').format(DateTime(result['year'] as int, result['month'] as int)),
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
                   const SizedBox(height: 16),
                   Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: <Widget>[
                     const Text('Total Responses', style: TextStyle(color: AppColors.textPrimary)),

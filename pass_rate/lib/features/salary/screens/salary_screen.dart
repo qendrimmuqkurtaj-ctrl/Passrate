@@ -16,6 +16,10 @@ class SalaryController extends GetxController {
   String myAircraftType = '';
   int mySeniorityYears = 0;
 
+  final RxBool isJobHunting = false.obs;
+  final RxBool hasError = false.obs;
+  bool _reminderShown = false;
+
   final RxString searchQuery = ''.obs;
   final RxString filterRank = ''.obs;
   final RxString filterCountry = ''.obs;
@@ -141,33 +145,50 @@ class SalaryController extends GetxController {
   void onInit() {
     super.onInit();
     _fetchAirlineNames();
-    _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   Future<void> _load() async {
     loading.value = true;
-    final String deviceId = await FirebaseService.getDeviceId();
-    final Map<String, dynamic>? submission = await FirebaseService.getDeviceSalarySubmission(deviceId);
+    hasError.value = false;
+    try {
+      const Duration timeout = Duration(seconds: 10);
+      final String deviceId = await FirebaseService.getDeviceId();
+      final Map<String, dynamic>? submission = await FirebaseService
+          .getDeviceSalarySubmission(deviceId)
+          .timeout(timeout);
 
-    hasSubmitted.value = submission != null;
-    existingDocId = submission?['id'] as String?;
+      hasSubmitted.value = submission != null;
+      existingDocId = submission?['id'] as String?;
 
-    if (submission != null) {
-      myRank = submission['rank'] as String? ?? '';
-      myAircraftType = submission['aircraftType'] as String? ?? '';
-      mySeniorityYears = (submission['seniorityYears'] as num?)?.toInt() ?? 0;
-      final DateTime? createdAt = submission['createdAt'] as DateTime?;
-      isOutdated.value = createdAt == null || DateTime.now().difference(createdAt).inDays > 365;
-      if (!isOutdated.value) {
+      if (submission != null) {
+        myRank = submission['rank'] as String? ?? '';
+        myAircraftType = submission['aircraftType'] as String? ?? '';
+        mySeniorityYears = (submission['seniorityYears'] as num?)?.toInt() ?? 0;
+        final DateTime? updatedAt = submission['updatedAt'] as DateTime?;
+        final DateTime? createdAt = submission['createdAt'] as DateTime?;
+        final DateTime? effectiveDate = updatedAt ?? createdAt;
+        isOutdated.value = effectiveDate == null || DateTime.now().difference(effectiveDate).inDays > 365;
         await _fetchRates();
-        salaries.value = await FirebaseService.getAllSalaries();
+        salaries.value = await FirebaseService.getAllSalaries().timeout(timeout);
+        if (isOutdated.value && !_reminderShown) {
+          _reminderShown = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) => _showSoftReminder());
+        }
+      } else if (isJobHunting.value) {
+        myRank = '';
+        myAircraftType = '';
+        mySeniorityYears = 0;
+        await _fetchRates();
+        salaries.value = await FirebaseService.getAllSalaries().timeout(timeout);
+      } else {
+        myRank = '';
+        myAircraftType = '';
+        mySeniorityYears = 0;
       }
-    } else {
-      myRank = '';
-      myAircraftType = '';
-      mySeniorityYears = 0;
+    } catch (_) {
+      hasError.value = true;
     }
-
     loading.value = false;
   }
 
@@ -212,6 +233,118 @@ class SalaryController extends GetxController {
     hasSubmitted.value = false;
     isOutdated.value = false;
   }
+
+  Future<void> setJobHunting() async {
+    loading.value = true;
+    hasError.value = false;
+    isJobHunting.value = true;
+    try {
+      if (salaries.isEmpty) {
+        await _fetchRates();
+        salaries.value = await FirebaseService.getAllSalaries()
+            .timeout(const Duration(seconds: 10));
+      }
+    } catch (_) {
+      hasError.value = true;
+    }
+    loading.value = false;
+  }
+
+  Future<void> confirmStillValid() async {
+    if (existingDocId == null) return;
+    await FirebaseService.updateSalaryTimestamp(existingDocId!);
+    isOutdated.value = false;
+  }
+
+  void _showSoftReminder() {
+    Get.dialog<void>(
+      AlertDialog(
+        backgroundColor: AppColors.bgCard,
+        title: const Text(
+          'Is your salary still current?',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
+        content: const Text(
+          'Your salary submission is over 12 months old. Is it still accurate?',
+          style: TextStyle(color: AppColors.textMuted),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () async {
+              Get.back();
+              await confirmStillValid();
+            },
+            child: const Text('Yes, still valid', style: TextStyle(color: AppColors.accent)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Get.back();
+              await Get.to(() => SubmitSalaryScreen(existingDocId: existingDocId));
+              reload();
+            },
+            child: const Text('No, update it', style: TextStyle(color: AppColors.textMuted)),
+          ),
+        ],
+      ),
+      barrierDismissible: false,
+    );
+  }
+
+  List<Map<String, dynamic>> get limitedViewGroups {
+    final Map<String, List<Map<String, dynamic>>> grouped = <String, List<Map<String, dynamic>>>{};
+    for (final Map<String, dynamic> s in salaries) {
+      final String airline = s['airline'] as String? ?? '';
+      final String rank = s['rank'] as String? ?? '';
+      final String aircraft = s['aircraftType'] as String? ?? '';
+      if (airline.isEmpty) continue;
+      final String key = '$airline\x00$rank\x00$aircraft';
+      grouped[key] ??= <Map<String, dynamic>>[];
+      grouped[key]!.add(s);
+    }
+    final List<Map<String, dynamic>> result = <Map<String, dynamic>>[];
+    for (final MapEntry<String, List<Map<String, dynamic>>> entry in grouped.entries) {
+      final List<String> parts = entry.key.split('\x00');
+      final String airline = parts[0];
+      final String rank = parts.length > 1 ? parts[1] : '';
+      final String aircraft = parts.length > 2 ? parts[2] : '';
+      final List<Map<String, dynamic>> entries = entry.value;
+      if (entries.length >= 3) {
+        final List<double> eurSalaries = entries
+            .map((Map<String, dynamic> s) => toEur(
+                  (s['baseSalary'] as num?)?.toDouble() ?? 0,
+                  s['currency'] as String? ?? '',
+                ))
+            .where((double v) => v > 0)
+            .toList()
+          ..sort();
+        result.add(<String, dynamic>{
+          'airline': airline,
+          'rank': rank,
+          'aircraftType': aircraft,
+          'hasData': eurSalaries.isNotEmpty,
+          'minEur': eurSalaries.isEmpty ? 0.0 : eurSalaries.first,
+          'maxEur': eurSalaries.isEmpty ? 0.0 : eurSalaries.last,
+          'count': entries.length,
+        });
+      } else {
+        result.add(<String, dynamic>{
+          'airline': airline,
+          'rank': rank,
+          'aircraftType': aircraft,
+          'hasData': false,
+          'minEur': 0.0,
+          'maxEur': 0.0,
+          'count': entries.length,
+        });
+      }
+    }
+    result.sort((Map<String, dynamic> a, Map<String, dynamic> b) {
+      final int cmp = (a['airline'] as String).compareTo(b['airline'] as String);
+      if (cmp != 0) return cmp;
+      return (a['rank'] as String).compareTo(b['rank'] as String);
+    });
+    return result;
+  }
 }
 
 class SalaryScreen extends StatelessWidget {
@@ -240,40 +373,61 @@ class SalaryScreen extends StatelessWidget {
         if (c.loading.value) {
           return const Center(child: CircularProgressIndicator(color: AppColors.accent));
         }
-        if (!c.hasSubmitted.value) {
-          return _buildLockedView(
-            c,
-            message: 'Submit your salary to unlock all pilot salaries',
-            buttonLabel: 'Submit Salary',
+        if (c.hasError.value) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  const Icon(Icons.wifi_off_outlined, color: AppColors.textMuted, size: 52),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Something went wrong. Please try again.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 15),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () => c.reload(),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
           );
         }
-        if (c.isOutdated.value) {
-          return _buildLockedView(
-            c,
-            message: 'Your salary data is outdated. Please update to continue viewing salaries.',
-            buttonLabel: 'Update Salary',
-          );
+        if (!c.hasSubmitted.value && !c.isJobHunting.value) {
+          return _buildIntroView(c);
+        }
+        if (!c.hasSubmitted.value && c.isJobHunting.value) {
+          return _buildLimitedView(c);
         }
         return _buildSearchPage(c);
       }),
     );
   }
 
-  Widget _buildLockedView(SalaryController c, {required String message, required String buttonLabel}) {
+  Widget _buildIntroView(SalaryController c) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Icon(Icons.lock_outline, color: AppColors.textMuted, size: 64),
+            const Icon(Icons.monetization_on_outlined, color: AppColors.accent, size: 64),
             const SizedBox(height: 24),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 16),
+            const Text(
+              'Pilot Salary Data',
+              style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 20),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 12),
+            const Text(
+              'Access real pilot salary data from airlines across Europe.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 15, height: 1.5),
+            ),
+            const SizedBox(height: 36),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -281,12 +435,90 @@ class SalaryScreen extends StatelessWidget {
                   await Get.to(() => SubmitSalaryScreen(existingDocId: c.existingDocId));
                   c.reload();
                 },
-                child: Text(buttonLabel, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                child: const Text(
+                  "I'm employed — submit my salary",
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
               ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => c.setJobHunting(),
+                child: const Text(
+                  "I'm seeking a position",
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Already submitted from another device?\nYour data should appear automatically.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildLimitedView(SalaryController c) {
+    return Column(
+      children: <Widget>[
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          color: AppColors.accent.withValues(alpha: 0.12),
+          child: Row(
+            children: <Widget>[
+              const Icon(Icons.info_outline, color: AppColors.accent, size: 18),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Submit your salary to see individual entries and advanced insights.',
+                  style: TextStyle(color: AppColors.accent, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Obx(() {
+            final List<Map<String, dynamic>> groups = c.limitedViewGroups;
+            if (groups.isEmpty) {
+              return const Center(
+                child: Text('No salary data available yet.', style: TextStyle(color: AppColors.textMuted)),
+              );
+            }
+            return ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: groups.length,
+              itemBuilder: (BuildContext ctx, int i) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _LimitedGroupCard(group: groups[i]),
+              ),
+            );
+          }),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () async {
+                await Get.to(() => SubmitSalaryScreen(existingDocId: c.existingDocId));
+                c.reload();
+              },
+              child: const Text(
+                'Submit Salary for Full Access',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -541,6 +773,76 @@ class SalaryScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class _LimitedGroupCard extends StatelessWidget {
+  final Map<String, dynamic> group;
+  const _LimitedGroupCard({required this.group});
+
+  @override
+  Widget build(BuildContext context) {
+    final String airline = group['airline'] as String? ?? '-';
+    final String rank = group['rank'] as String? ?? '-';
+    final String aircraft = group['aircraftType'] as String? ?? '-';
+    final bool hasData = group['hasData'] as bool? ?? false;
+    final int count = group['count'] as int? ?? 0;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  airline,
+                  style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                const SizedBox(height: 4),
+                Text('$rank · $aircraft', style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                Text(
+                  '$count submission${count == 1 ? '' : 's'}',
+                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          if (hasData)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: <Widget>[
+                const Text('Base Salary', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                Text(
+                  '${_fmt(group['minEur'] as double)} – ${_fmt(group['maxEur'] as double)} EUR',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            )
+          else
+            const Text(
+              'Not enough\ndata yet',
+              textAlign: TextAlign.right,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _fmt(double v) => v.truncate().toString().replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
+    (Match m) => ',',
+  );
 }
 
 double _toEur(double amount, String currency, Map<String, double> rates) {

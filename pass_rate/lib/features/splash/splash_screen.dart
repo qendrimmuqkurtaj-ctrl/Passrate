@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../home/screens/home_screen.dart';
 import 'onboarding_screen.dart';
 import '../../../core/design/app_colors.dart';
 
@@ -21,9 +20,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
     _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     _controller.forward();
-    Future<void>.delayed(const Duration(seconds: 2), () {
-      Get.off(() => const OnboardingScreen(), transition: Transition.fade);
-    });
+    Future<void>.delayed(
+      const Duration(seconds: 2),
+      () => Get.off(() => const OnboardingScreen(), transition: Transition.fade),
+    );
   }
 
   @override

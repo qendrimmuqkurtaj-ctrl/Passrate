@@ -106,6 +106,13 @@ class AssessmentController extends GetxController {
         deviceId: deviceId,
       );
       return result;
+    } catch (_) {
+      Get.snackbar(
+        'Error',
+        'Could not submit. Please check your connection and try again.',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return null;
     } finally {
       submitting.value = false;
     }

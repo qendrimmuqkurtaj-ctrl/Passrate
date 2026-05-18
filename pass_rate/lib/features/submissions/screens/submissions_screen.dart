@@ -45,7 +45,7 @@ class SubmissionsController extends GetxController {
     if (success) {
       submissions.remove(submission);
       _filter();
-      Get.snackbar('Slettet', 'Submission slettet', snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar('Deleted', 'Submission deleted', snackPosition: SnackPosition.BOTTOM);
     }
   }
 
@@ -87,15 +87,6 @@ class SubmissionsScreen extends StatelessWidget {
               ),
             )),
             const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {},
-                icon: const Icon(CupertinoIcons.search, color: Colors.white),
-                label: const Text('Search', style: TextStyle(color: Colors.white)),
-              ),
-            ),
-            const SizedBox(height: 12),
             Expanded(
               child: Obx(() {
                 if (c.loading.value) return const Center(child: CircularProgressIndicator(color: AppColors.accent));
@@ -106,7 +97,7 @@ class SubmissionsScreen extends StatelessWidget {
                       children: <Widget>[
                         Icon(CupertinoIcons.airplane, size: 60, color: AppColors.accent.withValues(alpha: 0.3)),
                         const SizedBox(height: 16),
-                        Text(c.searchQuery.value.isNotEmpty ? 'Ingen treff' : 'Ingen submissions ennå', style: const TextStyle(color: AppColors.textMuted), textAlign: TextAlign.center),
+                        Text(c.searchQuery.value.isNotEmpty ? 'No results found' : 'No submissions yet', style: const TextStyle(color: AppColors.textMuted), textAlign: TextAlign.center),
                       ],
                     ),
                   );
@@ -138,12 +129,12 @@ class SubmissionsScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const Text('Vil du slette denne?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            const Text('Delete this submission?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
             const SizedBox(height: 20),
             Row(children: <Widget>[
-              Expanded(child: ElevatedButton(onPressed: () { Navigator.pop(ctx); c.deleteSubmission(sub); }, child: const Text('Ja'))),
+              Expanded(child: ElevatedButton(onPressed: () { Navigator.pop(ctx); c.deleteSubmission(sub); }, child: const Text('Yes'))),
               const SizedBox(width: 12),
-              Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(ctx), child: const Text('Nei'))),
+              Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(ctx), child: const Text('No'))),
             ]),
           ],
         ),
