@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/design/app_colors.dart';
 import '../../../core/services/firebase_service.dart';
 import 'submit_salary_screen.dart';
@@ -196,6 +197,7 @@ class SalaryController extends GetxController {
   Future<void> reload() => _load();
 
   Future<void> _fetchRates() async {
+    bool apiSuccess = false;
     try {
       final HttpClient client = HttpClient();
       final HttpClientRequest request = await client.getUrl(
@@ -209,11 +211,27 @@ class SalaryController extends GetxController {
         if (json['result'] == 'success') {
           final Map<String, dynamic> r = json['rates'] as Map<String, dynamic>;
           rates = r.map((String k, dynamic v) => MapEntry(k, (v as num).toDouble()));
+          apiSuccess = true;
+          final SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString('cached_eur_rates', jsonEncode(rates));
         }
       } else {
         client.close();
       }
     } catch (_) {}
+
+    if (!apiSuccess) {
+      try {
+        final SharedPreferences prefs = await SharedPreferences.getInstance();
+        final String? cached = prefs.getString('cached_eur_rates');
+        if (cached != null) {
+          final Map<String, dynamic> decoded = jsonDecode(cached) as Map<String, dynamic>;
+          rates = decoded.map((String k, dynamic v) => MapEntry(k, (v as num).toDouble()));
+        }
+        // If no cache exists, rates stays empty — toEur() returns 0 for non-EUR,
+        // which the UI already handles by hiding the EUR conversion line.
+      } catch (_) {}
+    }
   }
 
   Future<void> _fetchAirlineNames() async {
