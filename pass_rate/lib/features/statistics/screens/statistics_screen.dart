@@ -94,32 +94,50 @@ class StatisticsScreen extends StatelessWidget {
     if (c.assessmentController.loadingAirlines.value) {
       return const Center(child: CircularProgressIndicator());
     }
-    return Container(
-      decoration: BoxDecoration(color: AppColors.bgCard, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.border)),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          const Padding(
-            padding: EdgeInsets.only(top: 8),
-            child: Text('Airline Name', style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w500)),
+    final List<String> names = c.assessmentController.airlines
+        .map((Map<String, dynamic> a) => a['name'] as String)
+        .toList();
+    return GestureDetector(
+      onTap: () async {
+        final String? picked = await showModalBottomSheet<String>(
+          context: context,
+          backgroundColor: AppColors.bgCard,
+          isScrollControlled: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
           ),
-          DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              isExpanded: true,
-              hint: const Text('Choose the Airline Name', style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
-              value: c.selectedAirlineName.value.isEmpty ? null : c.selectedAirlineName.value,
-              icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.accent),
-              dropdownColor: AppColors.bgCard,
-              items: c.assessmentController.airlines.map((Map<String, dynamic> a) =>
-                DropdownMenuItem<String>(
-                  value: a['name'] as String,
-                  child: Text(a['name'] as String, style: const TextStyle(color: AppColors.textPrimary)),
-                )).toList(),
-              onChanged: (String? v) { if (v != null) c.selectedAirlineName.value = v; },
+          builder: (_) => _AirlineSearchSheet(items: names),
+        );
+        if (picked != null) c.selectedAirlineName.value = picked;
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.bgCard,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.border),
+        ),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  const Text('Airline Name', style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 4),
+                  Text(
+                    c.selectedAirlineName.value.isEmpty ? 'Choose the Airline Name' : c.selectedAirlineName.value,
+                    style: TextStyle(
+                      color: c.selectedAirlineName.value.isEmpty ? AppColors.textMuted : AppColors.textPrimary,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            const Icon(Icons.keyboard_arrow_down, color: AppColors.accent),
+          ],
+        ),
       ),
     );
   }
@@ -358,5 +376,113 @@ class StatisticsScreen extends StatelessWidget {
         ),
       ),
     ));
+  }
+}
+
+class _AirlineSearchSheet extends StatefulWidget {
+  final List<String> items;
+  const _AirlineSearchSheet({required this.items});
+
+  @override
+  State<_AirlineSearchSheet> createState() => _AirlineSearchSheetState();
+}
+
+class _AirlineSearchSheetState extends State<_AirlineSearchSheet> {
+  final TextEditingController _ctrl = TextEditingController();
+  late List<String> _visible;
+
+  @override
+  void initState() {
+    super.initState();
+    _visible = widget.items;
+    _ctrl.addListener(_filter);
+  }
+
+  void _filter() {
+    final String q = _ctrl.text.toLowerCase();
+    setState(() {
+      _visible = q.isEmpty
+          ? widget.items
+          : widget.items.where((String s) => s.toLowerCase().contains(q)).toList();
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          const SizedBox(height: 12),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'Airline Name',
+              style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 15),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: _ctrl,
+              autofocus: true,
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Search...',
+                hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+                prefixIcon: const Icon(Icons.search, color: AppColors.textMuted, size: 20),
+                filled: true,
+                fillColor: AppColors.bgPrimary,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.accent),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 300,
+            child: ListView.builder(
+              itemCount: _visible.length,
+              itemBuilder: (BuildContext ctx, int i) => InkWell(
+                onTap: () => Navigator.of(ctx).pop(_visible[i]),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+                  child: Text(_visible[i], style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
   }
 }
