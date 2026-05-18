@@ -231,6 +231,24 @@ class FirebaseService {
     }
   }
 
+  static Future<Map<String, List<String>>> getCountries() async {
+    try {
+      final QuerySnapshot snap = await _db.collection('countries').get();
+      final Map<String, List<String>> result = <String, List<String>>{};
+      for (final DocumentSnapshot d in snap.docs) {
+        final Map<String, dynamic> data = d.data() as Map<String, dynamic>;
+        final String name = data['name'] as String? ?? '';
+        final List<dynamic> cities = data['cities'] as List<dynamic>? ?? <dynamic>[];
+        if (name.isNotEmpty) {
+          result[name] = cities.map((dynamic c) => c.toString()).toList();
+        }
+      }
+      return result;
+    } catch (e) {
+      return <String, List<String>>{};
+    }
+  }
+
   static Future<List<Map<String, dynamic>>> getAllSalaries() async {
     try {
       final QuerySnapshot snap = await _db.collection('salaries').get();

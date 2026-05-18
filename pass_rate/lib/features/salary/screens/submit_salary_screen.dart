@@ -13,22 +13,14 @@ const List<String> kAircraftTypes = <String>[
   'Q400', 'CRJ-900', 'ATR-42', 'ATR-72',
 ];
 
-const Map<String, List<String>> _countryBases = <String, List<String>>{
-  'Norway':  <String>['Oslo', 'Bergen', 'Stavanger', 'Trondheim'],
-  'UK':      <String>['London', 'Manchester', 'Birmingham', 'Edinburgh'],
-  'Germany': <String>['Frankfurt', 'Munich', 'Berlin', 'Hamburg', 'Düsseldorf'],
-  'Sweden':  <String>['Stockholm', 'Gothenburg', 'Malmö'],
-  'Denmark': <String>['Copenhagen', 'Aarhus'],
-  'Finland': <String>['Helsinki', 'Tampere'],
-  'Ireland': <String>['Dublin', 'Shannon'],
-  'UAE':     <String>['Dubai', 'Abu Dhabi'],
-  'Qatar':   <String>['Doha'],
-};
 
 class SubmitSalaryController extends GetxController {
   final RxBool loadingAirlines = true.obs;
+  final RxBool loadingCountries = true.obs;
   final RxBool submitting = false.obs;
   String? existingDocId;
+
+  final RxMap<String, List<String>> countries = <String, List<String>>{}.obs;
 
   final RxList<Map<String, dynamic>> airlines = <Map<String, dynamic>>[].obs;
   final Rx<Map<String, dynamic>?> selectedAirline = Rx<Map<String, dynamic>?>(null);
@@ -72,6 +64,7 @@ class SubmitSalaryController extends GetxController {
   void onInit() {
     super.onInit();
     fetchAirlines();
+    fetchCountries();
   }
 
   @override
@@ -89,6 +82,15 @@ class SubmitSalaryController extends GetxController {
       airlines.value = await FirebaseService.getAirlines();
     } finally {
       loadingAirlines.value = false;
+    }
+  }
+
+  Future<void> fetchCountries() async {
+    loadingCountries.value = true;
+    try {
+      countries.value = await FirebaseService.getCountries();
+    } finally {
+      loadingCountries.value = false;
     }
   }
 
@@ -255,25 +257,28 @@ class SubmitSalaryScreen extends StatelessWidget {
 
             // Country
             const _FieldLabel('Country'),
-            Obx(() => _Dropdown<String>(
-              hint: 'Select Country',
-              value: c.selectedCountry.value.isEmpty ? null : c.selectedCountry.value,
-              items: <String>[
-                ..._countryBases.keys,
-                'Other',
-              ].map((String country) => DropdownMenuItem<String>(
-                value: country,
-                child: Text(country, style: const TextStyle(color: AppColors.textPrimary)),
-              )).toList(),
-              onChanged: (String? v) => c.selectCountry(v),
-            )),
+            Obx(() {
+              if (c.loadingCountries.value && c.countries.isEmpty) {
+                return const Center(child: CircularProgressIndicator(color: AppColors.accent));
+              }
+              final List<String> countryList = c.countries.keys.toList()..sort();
+              return _Dropdown<String>(
+                hint: 'Select Country',
+                value: c.selectedCountry.value.isEmpty ? null : c.selectedCountry.value,
+                items: <String>[...countryList, 'Other'].map((String country) => DropdownMenuItem<String>(
+                  value: country,
+                  child: Text(country, style: const TextStyle(color: AppColors.textPrimary)),
+                )).toList(),
+                onChanged: (String? v) => c.selectCountry(v),
+              );
+            }),
             const SizedBox(height: 16),
 
             // Base / City — dropdown for known countries, free text for Other
             const _FieldLabel('Base/City'),
             Obx(() {
               final String country = c.selectedCountry.value;
-              final List<String>? cities = _countryBases[country];
+              final List<String>? cities = c.countries[country];
               if (country.isEmpty) {
                 return _Dropdown<String>(
                   hint: 'Select base or city',

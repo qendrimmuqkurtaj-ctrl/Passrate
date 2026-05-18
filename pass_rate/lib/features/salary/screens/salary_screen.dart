@@ -26,6 +26,7 @@ class SalaryController extends GetxController {
   final RxString filterBase = ''.obs;
   final RxString filterAircraftType = ''.obs;
   final RxString filterSeniority = ''.obs;
+  final RxString limitedAirlineFilter = ''.obs;
   final RxList<String> airlineNames = <String>[].obs;
   Map<String, double> rates = <String, double>{};
 
@@ -345,6 +346,23 @@ class SalaryController extends GetxController {
     });
     return result;
   }
+
+  List<String> get limitedAirlines {
+    return limitedViewGroups
+        .map((Map<String, dynamic> g) => g['airline'] as String? ?? '')
+        .where((String a) => a.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+  }
+
+  List<Map<String, dynamic>> get filteredLimitedGroups {
+    final String q = limitedAirlineFilter.value;
+    if (q.isEmpty) return limitedViewGroups;
+    return limitedViewGroups
+        .where((Map<String, dynamic> g) => (g['airline'] as String? ?? '') == q)
+        .toList();
+  }
 }
 
 class SalaryScreen extends StatelessWidget {
@@ -454,7 +472,7 @@ class SalaryScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             const Text(
-              'Already submitted from another device?\nYour data should appear automatically.',
+              'Switched phones? Submit your salary again to restore full access.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.textMuted, fontSize: 12),
             ),
@@ -484,9 +502,18 @@ class SalaryScreen extends StatelessWidget {
             ],
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+          child: Obx(() => _SearchableFilterDrop(
+            hint: 'Airline',
+            value: c.limitedAirlineFilter.value.isEmpty ? null : c.limitedAirlineFilter.value,
+            options: c.limitedAirlines,
+            onChanged: (String? v) => c.limitedAirlineFilter.value = v ?? '',
+          )),
+        ),
         Expanded(
           child: Obx(() {
-            final List<Map<String, dynamic>> groups = c.limitedViewGroups;
+            final List<Map<String, dynamic>> groups = c.filteredLimitedGroups;
             if (groups.isEmpty) {
               return const Center(
                 child: Text('No salary data available yet.', style: TextStyle(color: AppColors.textMuted)),
@@ -575,7 +602,7 @@ class SalaryScreen extends StatelessWidget {
 
                 // ── Best paid countries ──────────────────────────────────
                 Text(
-                  'Best paid countries for ${c.myRank}',
+                  'Best paid countries for ${c.myRank} pilots (based on submitted salaries)',
                   style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
                 ),
                 const SizedBox(height: 8),
