@@ -689,7 +689,7 @@ class SalaryScreen extends StatelessWidget {
   }
 
   Widget _buildSearchBar(SalaryController c) {
-    return Obx(() => _FilterDrop(
+    return Obx(() => _SearchableFilterDrop(
       hint: 'Airline',
       value: c.searchQuery.value.isEmpty ? null : c.searchQuery.value,
       options: c.airlineNames.toList(),
@@ -712,7 +712,7 @@ class SalaryScreen extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Obx(() => _FilterDrop(
+              child: Obx(() => _SearchableFilterDrop(
                 hint: 'Country',
                 value: c.filterCountry.value.isEmpty ? null : c.filterCountry.value,
                 options: c.availableCountries,
@@ -734,7 +734,7 @@ class SalaryScreen extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Obx(() => _FilterDrop(
+              child: Obx(() => _SearchableFilterDrop(
                 hint: 'Base/City',
                 value: c.filterBase.value.isEmpty ? null : c.filterBase.value,
                 options: c.availableBases,
