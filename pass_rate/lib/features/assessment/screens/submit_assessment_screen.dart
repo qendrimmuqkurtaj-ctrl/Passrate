@@ -113,26 +113,11 @@ class SubmitAssessmentScreen extends StatelessWidget {
   }
 
   Widget _buildAirlineDropdown(BuildContext context, AssessmentController c) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.bgCard, borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<Map<String, dynamic>>(
-          isExpanded: true,
-          hint: const Text('Choose the Airline Name', style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
-          value: c.selectedAirline.value,
-          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.accent),
-          dropdownColor: AppColors.bgCard,
-          items: c.airlines.map((Map<String, dynamic> a) => DropdownMenuItem<Map<String, dynamic>>(
-            value: a,
-            child: Text(a['name'] as String, style: const TextStyle(color: AppColors.textPrimary)),
-          )).toList(),
-          onChanged: (Map<String, dynamic>? v) { if (v != null) c.selectAirline(v); },
-        ),
-      ),
+    return _AirlineSearchableDropdown(
+      hint: 'Choose the Airline Name',
+      value: c.selectedAirline.value,
+      items: c.airlines,
+      onChanged: (Map<String, dynamic>? v) { if (v != null) c.selectAirline(v); },
     );
   }
 
@@ -363,6 +348,171 @@ class ConfirmScreen extends StatelessWidget {
             const SizedBox(height: 20),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AirlineSearchableDropdown extends StatelessWidget {
+  final String hint;
+  final Map<String, dynamic>? value;
+  final List<Map<String, dynamic>> items;
+  final ValueChanged<Map<String, dynamic>?> onChanged;
+
+  const _AirlineSearchableDropdown({
+    required this.hint,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _open(context),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.bgCard,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.border),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                value != null ? value!['name'] as String : hint,
+                style: TextStyle(
+                  color: value != null ? AppColors.textPrimary : AppColors.textMuted,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            const Icon(Icons.keyboard_arrow_down, color: AppColors.accent),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _open(BuildContext context) async {
+    final Map<String, dynamic>? picked = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      backgroundColor: AppColors.bgCard,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _AirlineSearchSheet(hint: hint, items: items),
+    );
+    if (picked != null) onChanged(picked);
+  }
+}
+
+class _AirlineSearchSheet extends StatefulWidget {
+  final String hint;
+  final List<Map<String, dynamic>> items;
+  const _AirlineSearchSheet({required this.hint, required this.items});
+
+  @override
+  State<_AirlineSearchSheet> createState() => _AirlineSearchSheetState();
+}
+
+class _AirlineSearchSheetState extends State<_AirlineSearchSheet> {
+  final TextEditingController _ctrl = TextEditingController();
+  late List<Map<String, dynamic>> _visible;
+
+  @override
+  void initState() {
+    super.initState();
+    _visible = widget.items;
+    _ctrl.addListener(_filter);
+  }
+
+  void _filter() {
+    final String q = _ctrl.text.toLowerCase();
+    setState(() {
+      _visible = q.isEmpty
+          ? widget.items
+          : widget.items.where((Map<String, dynamic> a) => (a['name'] as String).toLowerCase().contains(q)).toList();
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          const SizedBox(height: 12),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              widget.hint,
+              style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 15),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: _ctrl,
+              autofocus: true,
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Search...',
+                hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+                prefixIcon: const Icon(Icons.search, color: AppColors.textMuted, size: 20),
+                filled: true,
+                fillColor: AppColors.bgPrimary,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.accent),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 300,
+            child: ListView.builder(
+              itemCount: _visible.length,
+              itemBuilder: (BuildContext ctx, int i) => InkWell(
+                onTap: () => Navigator.of(ctx).pop(_visible[i]),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+                  child: Text(_visible[i]['name'] as String, style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }
