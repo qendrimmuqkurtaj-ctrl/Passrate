@@ -4,6 +4,15 @@ import 'package:get/get.dart';
 import '../../../core/design/app_colors.dart';
 import '../../../core/services/firebase_service.dart';
 
+const List<String> kAircraftTypes = <String>[
+  'A220', 'A318', 'A319', 'A320', 'A321',
+  'A330', 'A340', 'A350', 'A380',
+  '737-700', '737-800', '737-900', '737 MAX',
+  '757', '767', '777', '787',
+  'E170', 'E175', 'E190', 'E195',
+  'Q400', 'CRJ-900', 'ATR-42', 'ATR-72',
+];
+
 const Map<String, List<String>> _countryBases = <String, List<String>>{
   'Norway':  <String>['Oslo', 'Bergen', 'Stavanger', 'Trondheim'],
   'UK':      <String>['London', 'Manchester', 'Birmingham', 'Edinburgh'],
@@ -190,13 +199,10 @@ class SubmitSalaryScreen extends StatelessWidget {
 
             // Aircraft type
             const _FieldLabel('Aircraft Type'),
-            Obx(() => _Dropdown<String>(
+            Obx(() => _SearchableDropdown(
               hint: 'Select Aircraft Type',
               value: c.selectedAircraftType.value.isEmpty ? null : c.selectedAircraftType.value,
-              items: <String>['Narrowbody', 'Widebody'].map((String a) => DropdownMenuItem<String>(
-                value: a,
-                child: Text(a, style: const TextStyle(color: AppColors.textPrimary)),
-              )).toList(),
+              items: kAircraftTypes,
               onChanged: (String? v) { if (v != null) c.selectedAircraftType.value = v; },
             )),
             const SizedBox(height: 16),
@@ -211,6 +217,19 @@ class SubmitSalaryScreen extends StatelessWidget {
                 child: Text(ct, style: const TextStyle(color: AppColors.textPrimary)),
               )).toList(),
               onChanged: (String? v) { if (v != null) c.selectedContractType.value = v; },
+            )),
+            const SizedBox(height: 16),
+
+            // Currency
+            const _FieldLabel('Currency'),
+            Obx(() => _Dropdown<String>(
+              hint: 'Select Currency',
+              value: c.selectedCurrency.value.isEmpty ? null : c.selectedCurrency.value,
+              items: <String>['NOK', 'EUR', 'GBP', 'USD', 'SEK', 'DKK'].map((String cur) => DropdownMenuItem<String>(
+                value: cur,
+                child: Text(cur, style: const TextStyle(color: AppColors.textPrimary)),
+              )).toList(),
+              onChanged: (String? v) { if (v != null) c.selectedCurrency.value = v; },
             )),
             const SizedBox(height: 16),
 
@@ -281,19 +300,6 @@ class SubmitSalaryScreen extends StatelessWidget {
                 onChanged: (_) => c.update(),
               );
             }),
-            const SizedBox(height: 16),
-
-            // Currency
-            const _FieldLabel('Currency'),
-            Obx(() => _Dropdown<String>(
-              hint: 'Select Currency',
-              value: c.selectedCurrency.value.isEmpty ? null : c.selectedCurrency.value,
-              items: <String>['NOK', 'EUR', 'GBP', 'USD', 'SEK', 'DKK'].map((String cur) => DropdownMenuItem<String>(
-                value: cur,
-                child: Text(cur, style: const TextStyle(color: AppColors.textPrimary)),
-              )).toList(),
-              onChanged: (String? v) { if (v != null) c.selectedCurrency.value = v; },
-            )),
             const SizedBox(height: 32),
 
             // Submit button
@@ -449,6 +455,171 @@ class _TextField extends StatelessWidget {
           border: InputBorder.none,
         ),
         onChanged: onChanged,
+      ),
+    );
+  }
+}
+
+class _SearchableDropdown extends StatelessWidget {
+  final String hint;
+  final String? value;
+  final List<String> items;
+  final ValueChanged<String?> onChanged;
+
+  const _SearchableDropdown({
+    required this.hint,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _open(context),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.bgCard,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.border),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                value ?? hint,
+                style: TextStyle(
+                  color: value != null ? AppColors.textPrimary : AppColors.textMuted,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            const Icon(Icons.keyboard_arrow_down, color: AppColors.accent),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _open(BuildContext context) async {
+    final String? picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.bgCard,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _SearchSheet(hint: hint, items: items),
+    );
+    if (picked != null) onChanged(picked);
+  }
+}
+
+class _SearchSheet extends StatefulWidget {
+  final String hint;
+  final List<String> items;
+  const _SearchSheet({required this.hint, required this.items});
+
+  @override
+  State<_SearchSheet> createState() => _SearchSheetState();
+}
+
+class _SearchSheetState extends State<_SearchSheet> {
+  final TextEditingController _ctrl = TextEditingController();
+  late List<String> _visible;
+
+  @override
+  void initState() {
+    super.initState();
+    _visible = widget.items;
+    _ctrl.addListener(_filter);
+  }
+
+  void _filter() {
+    final String q = _ctrl.text.toLowerCase();
+    setState(() {
+      _visible = q.isEmpty
+          ? widget.items
+          : widget.items.where((String s) => s.toLowerCase().contains(q)).toList();
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          const SizedBox(height: 12),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              widget.hint,
+              style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 15),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: _ctrl,
+              autofocus: true,
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Search...',
+                hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+                prefixIcon: const Icon(Icons.search, color: AppColors.textMuted, size: 20),
+                filled: true,
+                fillColor: AppColors.bgPrimary,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.accent),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 300,
+            child: ListView.builder(
+              itemCount: _visible.length,
+              itemBuilder: (BuildContext ctx, int i) => InkWell(
+                onTap: () => Navigator.of(ctx).pop(_visible[i]),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+                  child: Text(_visible[i], style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }

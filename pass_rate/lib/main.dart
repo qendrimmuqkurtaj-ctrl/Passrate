@@ -7,6 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'firebase_options.dart';
 import 'core/design/app_colors.dart';
+import 'core/services/firebase_service.dart';
 import 'features/splash/splash_screen.dart';
 
 const _appStoreId = '6754942459';
@@ -16,6 +17,7 @@ void main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const PassRateApp());
   WidgetsBinding.instance.addPostFrameCallback((_) => _checkForUpdate());
+  WidgetsBinding.instance.addPostFrameCallback((_) => FirebaseService.seedAircraftTypes());
 }
 
 Future<void> _checkForUpdate() async {

@@ -345,6 +345,60 @@ class FirebaseService {
     return null;
   }
 
+  static Future<void> seedAircraftTypes() async {
+    const List<Map<String, String>> types = <Map<String, String>>[
+      // Airbus – Narrowbody
+      {'name': 'A220', 'manufacturer': 'Airbus', 'category': 'Narrowbody'},
+      {'name': 'A318', 'manufacturer': 'Airbus', 'category': 'Narrowbody'},
+      {'name': 'A319', 'manufacturer': 'Airbus', 'category': 'Narrowbody'},
+      {'name': 'A320', 'manufacturer': 'Airbus', 'category': 'Narrowbody'},
+      {'name': 'A321', 'manufacturer': 'Airbus', 'category': 'Narrowbody'},
+      // Airbus – Widebody
+      {'name': 'A330', 'manufacturer': 'Airbus', 'category': 'Widebody'},
+      {'name': 'A340', 'manufacturer': 'Airbus', 'category': 'Widebody'},
+      {'name': 'A350', 'manufacturer': 'Airbus', 'category': 'Widebody'},
+      {'name': 'A380', 'manufacturer': 'Airbus', 'category': 'Widebody'},
+      // Boeing – Narrowbody
+      {'name': '737-700', 'manufacturer': 'Boeing', 'category': 'Narrowbody'},
+      {'name': '737-800', 'manufacturer': 'Boeing', 'category': 'Narrowbody'},
+      {'name': '737-900', 'manufacturer': 'Boeing', 'category': 'Narrowbody'},
+      {'name': '737 MAX', 'manufacturer': 'Boeing', 'category': 'Narrowbody'},
+      {'name': '757',     'manufacturer': 'Boeing', 'category': 'Narrowbody'},
+      // Boeing – Widebody
+      {'name': '767', 'manufacturer': 'Boeing', 'category': 'Widebody'},
+      {'name': '777', 'manufacturer': 'Boeing', 'category': 'Widebody'},
+      {'name': '787', 'manufacturer': 'Boeing', 'category': 'Widebody'},
+      // Embraer – Regional
+      {'name': 'E170', 'manufacturer': 'Embraer', 'category': 'Regional'},
+      {'name': 'E175', 'manufacturer': 'Embraer', 'category': 'Regional'},
+      {'name': 'E190', 'manufacturer': 'Embraer', 'category': 'Regional'},
+      {'name': 'E195', 'manufacturer': 'Embraer', 'category': 'Regional'},
+      // Bombardier – Regional
+      {'name': 'Q400',    'manufacturer': 'Bombardier', 'category': 'Regional'},
+      {'name': 'CRJ-900', 'manufacturer': 'Bombardier', 'category': 'Regional'},
+      // ATR – Regional
+      {'name': 'ATR-42', 'manufacturer': 'ATR', 'category': 'Regional'},
+      {'name': 'ATR-72', 'manufacturer': 'ATR', 'category': 'Regional'},
+    ];
+
+    try {
+      final CollectionReference col = _db.collection('aircraftTypes');
+      final QuerySnapshot existing = await col.get();
+      final Set<String> existingIds = existing.docs.map((DocumentSnapshot d) => d.id).toSet();
+
+      final WriteBatch batch = _db.batch();
+      int added = 0;
+      for (final Map<String, String> type in types) {
+        final String name = type['name']!;
+        if (!existingIds.contains(name)) {
+          batch.set(col.doc(name), type);
+          added++;
+        }
+      }
+      if (added > 0) await batch.commit();
+    } catch (_) {}
+  }
+
   static Future<int> getTotalSubmissionsCount() async {
     try {
       final AggregateQuerySnapshot snap =

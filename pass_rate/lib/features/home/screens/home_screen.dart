@@ -6,31 +6,12 @@ import '../../salary/screens/salary_screen.dart';
 import '../../statistics/screens/statistics_screen.dart';
 import '../../submissions/screens/submissions_screen.dart';
 import '../../../core/design/app_colors.dart';
-import '../../../core/services/firebase_service.dart';
-
-class HomeController extends GetxController {
-  final RxInt totalSubmissions = 0.obs;
-  final RxBool loading = true.obs;
-
-  @override
-  void onInit() {
-    super.onInit();
-    _load();
-  }
-
-  Future<void> _load() async {
-    totalSubmissions.value = await FirebaseService.getTotalSubmissionsCount();
-    loading.value = false;
-  }
-}
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final HomeController c = Get.put(HomeController());
-
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       body: Column(
@@ -44,7 +25,7 @@ class HomeScreen extends StatelessWidget {
                 bottomRight: Radius.circular(36),
               ),
             ),
-            padding: const EdgeInsets.only(top: 60, bottom: 28, left: 24, right: 24),
+            padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top, left: 24, right: 24),
             child: Center(
               child: Image.asset(
                 'assets/images/logo_with_text.png',
@@ -59,27 +40,6 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           ),
-          Obx(() => c.loading.value
-            ? const SizedBox(height: 48)
-            : Column(
-                children: <Widget>[
-                  Text(
-                    '${c.totalSubmissions.value}',
-                    style: const TextStyle(
-                      color: AppColors.accent,
-                      fontSize: 40,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'pilot reports',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 14),
-                  ),
-                ],
-              ),
-          ),
-          const SizedBox(height: 24),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),

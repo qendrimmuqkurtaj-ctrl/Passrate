@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/design/app_colors.dart';
@@ -18,7 +20,10 @@ class SalaryController extends GetxController {
   final RxString filterRank = ''.obs;
   final RxString filterCountry = ''.obs;
   final RxString filterBase = ''.obs;
+  final RxString filterAircraftType = ''.obs;
+  final RxString filterSeniority = ''.obs;
   final RxList<String> airlineNames = <String>[].obs;
+  Map<String, double> rates = <String, double>{};
 
   List<Map<String, dynamic>> get filtered {
     List<Map<String, dynamic>> list = salaries.toList();
@@ -38,6 +43,18 @@ class SalaryController extends GetxController {
       list = list.where((Map<String, dynamic> s) =>
           (s['base'] as String? ?? '') == filterBase.value).toList();
     }
+    if (filterAircraftType.value.isNotEmpty) {
+      list = list.where((Map<String, dynamic> s) =>
+          (s['aircraftType'] as String? ?? '') == filterAircraftType.value).toList();
+    }
+    if (filterSeniority.value.isNotEmpty) {
+      final String sel = filterSeniority.value;
+      list = list.where((Map<String, dynamic> s) {
+        final int seniority = (s['seniorityYears'] as num?)?.toInt() ?? 0;
+        if (sel == '10+') return seniority >= 10;
+        return seniority == (int.tryParse(sel) ?? -1);
+      }).toList();
+    }
     return list;
   }
 
@@ -51,41 +68,48 @@ class SalaryController extends GetxController {
           return seniority == mySeniorityYears;
         })
         .toList();
-    matches.sort((Map<String, dynamic> a, Map<String, dynamic> b) =>
-        ((b['baseSalary'] as num?)?.toDouble() ?? 0)
-            .compareTo((a['baseSalary'] as num?)?.toDouble() ?? 0));
+    matches.sort((Map<String, dynamic> a, Map<String, dynamic> b) {
+      final double eurA = toEur((a['baseSalary'] as num?)?.toDouble() ?? 0, a['currency'] as String? ?? '');
+      final double eurB = toEur((b['baseSalary'] as num?)?.toDouble() ?? 0, b['currency'] as String? ?? '');
+      return eurB.compareTo(eurA);
+    });
     return matches.take(3).toList();
   }
 
-  // Top 3 countries by average base salary for the current user's rank.
+  // Top 3 countries by the single highest-paid individual submission for the current user's rank.
   List<Map<String, dynamic>> get bestPaidCountriesForMyRank {
     if (myRank.isEmpty) return <Map<String, dynamic>>[];
-    final Map<String, List<double>> salariesByCountry = <String, List<double>>{};
-    final Map<String, Map<String, int>> currencyByCountry = <String, Map<String, int>>{};
+    final Map<String, Map<String, dynamic>> bestByCountry = <String, Map<String, dynamic>>{};
     for (final Map<String, dynamic> s in salaries) {
       if (s['rank'] != myRank) continue;
       final String country = s['country'] as String? ?? '';
       if (country.isEmpty) continue;
       final double sal = (s['baseSalary'] as num?)?.toDouble() ?? 0;
       final String cur = s['currency'] as String? ?? '';
-      salariesByCountry[country] ??= <double>[];
-      salariesByCountry[country]!.add(sal);
-      currencyByCountry[country] ??= <String, int>{};
-      currencyByCountry[country]![cur] = (currencyByCountry[country]![cur] ?? 0) + 1;
+      final double eur = toEur(sal, cur);
+      final Map<String, dynamic>? current = bestByCountry[country];
+      if (current == null) {
+        bestByCountry[country] = s;
+      } else {
+        final double currentEur = toEur(
+          (current['baseSalary'] as num?)?.toDouble() ?? 0,
+          current['currency'] as String? ?? '',
+        );
+        if (eur > currentEur) bestByCountry[country] = s;
+      }
     }
-    final List<Map<String, dynamic>> result = salariesByCountry.entries
-        .map((MapEntry<String, List<double>> e) {
-          final double avg = e.value.reduce((double a, double b) => a + b) / e.value.length;
-          final String currency = (currencyByCountry[e.key]!.entries.toList()
-                ..sort((MapEntry<String, int> a, MapEntry<String, int> b) =>
-                    b.value.compareTo(a.value)))
-              .first
-              .key;
-          return <String, dynamic>{'country': e.key, 'avgSalary': avg, 'currency': currency};
-        })
-        .toList();
+    final List<Map<String, dynamic>> result = bestByCountry.entries.map((MapEntry<String, Map<String, dynamic>> e) {
+      final double sal = (e.value['baseSalary'] as num?)?.toDouble() ?? 0;
+      final String cur = e.value['currency'] as String? ?? '';
+      return <String, dynamic>{
+        'country': e.key,
+        'salary': sal,
+        'salaryEur': toEur(sal, cur),
+        'currency': cur,
+      };
+    }).toList();
     result.sort((Map<String, dynamic> a, Map<String, dynamic> b) =>
-        (b['avgSalary'] as double).compareTo(a['avgSalary'] as double));
+        (b['salaryEur'] as double).compareTo(a['salaryEur'] as double));
     return result.take(3).toList();
   }
 
@@ -105,6 +129,12 @@ class SalaryController extends GetxController {
         .toSet()
         .toList()
       ..sort();
+  }
+
+  double toEur(double amount, String currency) {
+    if (currency == 'EUR') return amount;
+    final double rate = rates[currency] ?? 0;
+    return rate > 0 ? amount / rate : 0;
   }
 
   @override
@@ -129,6 +159,7 @@ class SalaryController extends GetxController {
       final DateTime? createdAt = submission['createdAt'] as DateTime?;
       isOutdated.value = createdAt == null || DateTime.now().difference(createdAt).inDays > 365;
       if (!isOutdated.value) {
+        await _fetchRates();
         salaries.value = await FirebaseService.getAllSalaries();
       }
     } else {
@@ -141,6 +172,27 @@ class SalaryController extends GetxController {
   }
 
   Future<void> reload() => _load();
+
+  Future<void> _fetchRates() async {
+    try {
+      final HttpClient client = HttpClient();
+      final HttpClientRequest request = await client.getUrl(
+        Uri.parse('https://open.er-api.com/v6/latest/EUR'),
+      );
+      final HttpClientResponse response = await request.close();
+      if (response.statusCode == 200) {
+        final String body = await response.transform(utf8.decoder).join();
+        client.close();
+        final Map<String, dynamic> json = jsonDecode(body) as Map<String, dynamic>;
+        if (json['result'] == 'success') {
+          final Map<String, dynamic> r = json['rates'] as Map<String, dynamic>;
+          rates = r.map((String k, dynamic v) => MapEntry(k, (v as num).toDouble()));
+        }
+      } else {
+        client.close();
+      }
+    } catch (_) {}
+  }
 
   Future<void> _fetchAirlineNames() async {
     final List<Map<String, dynamic>> list = await FirebaseService.getAirlines();
@@ -274,14 +326,15 @@ class SalaryScreen extends StatelessWidget {
                   _buildEmptyInsightCard('Not enough data yet — check back later')
                 else
                   SizedBox(
-                    height: 88,
+                    height: 100,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: peers.length,
                       separatorBuilder: (_, __) => const SizedBox(width: 10),
                       itemBuilder: (BuildContext ctx, int i) => _PeerCard(
                         salary: peers[i],
-                        onTap: () => _showPeerProfile(ctx, peers[i]),
+                        rates: c.rates,
+                        onTap: () => _showPeerProfile(ctx, peers[i], c.rates),
                       ),
                     ),
                   ),
@@ -321,7 +374,7 @@ class SalaryScreen extends StatelessWidget {
                 else
                   ...results.map((Map<String, dynamic> s) => Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: _SalaryCard(salary: s),
+                    child: _SalaryCard(salary: s, rates: c.rates),
                   )),
               ],
             );
@@ -392,11 +445,33 @@ class SalaryScreen extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: Obx(() => _SearchableFilterDrop(
+                hint: 'Aircraft',
+                value: c.filterAircraftType.value.isEmpty ? null : c.filterAircraftType.value,
+                options: kAircraftTypes,
+                onChanged: (String? v) => c.filterAircraftType.value = v ?? '',
+              )),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Obx(() => _FilterDrop(
+                hint: 'Base/City',
+                value: c.filterBase.value.isEmpty ? null : c.filterBase.value,
+                options: c.availableBases,
+                onChanged: (String? v) => c.filterBase.value = v ?? '',
+              )),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
         Obx(() => _FilterDrop(
-          hint: 'Base/City',
-          value: c.filterBase.value.isEmpty ? null : c.filterBase.value,
-          options: c.availableBases,
-          onChanged: (String? v) => c.filterBase.value = v ?? '',
+          hint: 'Seniority',
+          value: c.filterSeniority.value.isEmpty ? null : c.filterSeniority.value,
+          options: const <String>['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '10+'],
+          onChanged: (String? v) => c.filterSeniority.value = v ?? '',
         )),
       ],
     );
@@ -441,7 +516,7 @@ class SalaryScreen extends StatelessWidget {
     }
   }
 
-  void _showPeerProfile(BuildContext context, Map<String, dynamic> salary) {
+  void _showPeerProfile(BuildContext context, Map<String, dynamic> salary, Map<String, double> rates) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.bgCard,
@@ -460,7 +535,7 @@ class SalaryScreen extends StatelessWidget {
               style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 16),
-            _SalaryCard(salary: salary),
+            _SalaryCard(salary: salary, rates: rates),
           ],
         ),
       ),
@@ -468,10 +543,17 @@ class SalaryScreen extends StatelessWidget {
   }
 }
 
+double _toEur(double amount, String currency, Map<String, double> rates) {
+  if (currency == 'EUR') return amount;
+  final double rate = rates[currency] ?? 0;
+  return rate > 0 ? amount / rate : 0;
+}
+
 class _PeerCard extends StatelessWidget {
   final Map<String, dynamic> salary;
   final VoidCallback onTap;
-  const _PeerCard({required this.salary, required this.onTap});
+  final Map<String, double> rates;
+  const _PeerCard({required this.salary, required this.onTap, required this.rates});
 
   @override
   Widget build(BuildContext context) {
@@ -479,6 +561,7 @@ class _PeerCard extends StatelessWidget {
     final String currency = salary['currency'] as String? ?? '';
     final String country = salary['country'] as String? ?? '-';
     final int seniority = (salary['seniorityYears'] as num?)?.toInt() ?? 0;
+    final double eurSalary = _toEur(baseSalary, currency, rates);
 
     return GestureDetector(
       onTap: onTap,
@@ -495,9 +578,14 @@ class _PeerCard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(
-              '$currency ${_fmt(baseSalary)}',
+              '${_fmt(baseSalary)} $currency',
               style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
             ),
+            if (currency != 'EUR' && eurSalary > 0)
+              Text(
+                '≈ ${_fmt(eurSalary)} EUR',
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+              ),
             const SizedBox(height: 4),
             Text(country, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
             Text('$seniority yr seniority', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
@@ -530,7 +618,8 @@ class _BestCountriesCard extends StatelessWidget {
         children: countries.asMap().entries.map((MapEntry<int, Map<String, dynamic>> e) {
           final int idx = e.key;
           final Map<String, dynamic> item = e.value;
-          final double avg = (item['avgSalary'] as double?) ?? 0;
+          final double salary = (item['salary'] as double?) ?? 0;
+          final double salaryEur = (item['salaryEur'] as double?) ?? 0;
           final String currency = item['currency'] as String? ?? '';
           final String country = item['country'] as String? ?? '-';
           final bool isLast = idx == countries.length - 1;
@@ -549,9 +638,21 @@ class _BestCountriesCard extends StatelessWidget {
                 Expanded(
                   child: Text(country, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
                 ),
-                Text(
-                  '$currency ${_fmt(avg)} avg',
-                  style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600, fontSize: 13),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: <Widget>[
+                    Text(
+                      currency == 'EUR'
+                          ? '${_fmt(salary)} EUR'
+                          : '${_fmt(salary)} $currency',
+                      style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    if (currency != 'EUR' && salaryEur > 0)
+                      Text(
+                        '≈ ${_fmt(salaryEur)} EUR',
+                        style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                      ),
+                  ],
                 ),
               ],
             ),
@@ -615,9 +716,192 @@ class _FilterDrop extends StatelessWidget {
   }
 }
 
+class _SearchableFilterDrop extends StatelessWidget {
+  final String hint;
+  final String? value;
+  final List<String> options;
+  final ValueChanged<String?> onChanged;
+
+  const _SearchableFilterDrop({
+    required this.hint,
+    required this.value,
+    required this.options,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _open(context),
+      child: Container(
+        height: 44,
+        decoration: BoxDecoration(
+          color: AppColors.bgCard,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: value != null ? AppColors.accent : AppColors.border),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                value ?? hint,
+                style: TextStyle(
+                  color: value != null ? AppColors.textPrimary : AppColors.textMuted,
+                  fontSize: 13,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const Icon(Icons.keyboard_arrow_down, color: AppColors.accent, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _open(BuildContext context) async {
+    final String? picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.bgCard,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _FilterSearchSheet(hint: hint, items: options),
+    );
+    if (picked != null) onChanged(picked);
+  }
+}
+
+class _FilterSearchSheet extends StatefulWidget {
+  final String hint;
+  final List<String> items;
+  const _FilterSearchSheet({required this.hint, required this.items});
+
+  @override
+  State<_FilterSearchSheet> createState() => _FilterSearchSheetState();
+}
+
+class _FilterSearchSheetState extends State<_FilterSearchSheet> {
+  final TextEditingController _ctrl = TextEditingController();
+  late List<String> _visible;
+
+  @override
+  void initState() {
+    super.initState();
+    _visible = widget.items;
+    _ctrl.addListener(_filter);
+  }
+
+  void _filter() {
+    final String q = _ctrl.text.toLowerCase();
+    setState(() {
+      _visible = q.isEmpty
+          ? widget.items
+          : widget.items.where((String s) => s.toLowerCase().contains(q)).toList();
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          const SizedBox(height: 12),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              widget.hint,
+              style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 15),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: _ctrl,
+              autofocus: true,
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Search...',
+                hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+                prefixIcon: const Icon(Icons.search, color: AppColors.textMuted, size: 20),
+                filled: true,
+                fillColor: AppColors.bgPrimary,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.accent),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 300,
+            child: ListView.builder(
+              itemCount: _visible.length + 1,
+              itemBuilder: (BuildContext ctx, int i) {
+                if (i == 0) {
+                  return InkWell(
+                    onTap: () => Navigator.of(ctx).pop(''),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+                      child: Text(
+                        'All ${widget.hint}',
+                        style: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+                      ),
+                    ),
+                  );
+                }
+                final String item = _visible[i - 1];
+                return InkWell(
+                  onTap: () => Navigator.of(ctx).pop(item),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+                    child: Text(item, style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+}
+
 class _SalaryCard extends StatelessWidget {
   final Map<String, dynamic> salary;
-  const _SalaryCard({required this.salary});
+  final Map<String, double> rates;
+  const _SalaryCard({required this.salary, required this.rates});
 
   @override
   Widget build(BuildContext context) {
@@ -631,6 +915,8 @@ class _SalaryCard extends StatelessWidget {
     final String country = salary['country'] as String? ?? '-';
     final String base = salary['base'] as String? ?? '-';
     final String currency = salary['currency'] as String? ?? '';
+    final double eurBase = _toEur(baseSalary, currency, rates);
+    final double eurPerDiem = _toEur(perDiem, currency, rates);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -679,9 +965,14 @@ class _SalaryCard extends StatelessWidget {
                     const Text('Base Salary', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                     const SizedBox(height: 2),
                     Text(
-                      '$currency ${_fmt(baseSalary)}',
+                      '${_fmt(baseSalary)} $currency',
                       style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
                     ),
+                    if (currency != 'EUR' && eurBase > 0)
+                      Text(
+                        '≈ ${_fmt(eurBase)} EUR',
+                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                      ),
                   ],
                 ),
               ),
@@ -692,9 +983,14 @@ class _SalaryCard extends StatelessWidget {
                     const Text('Per Diem', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                     const SizedBox(height: 2),
                     Text(
-                      '$currency ${_fmt(perDiem)}',
+                      '${_fmt(perDiem)} $currency',
                       style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600, fontSize: 15),
                     ),
+                    if (currency != 'EUR' && eurPerDiem > 0)
+                      Text(
+                        '≈ ${_fmt(eurPerDiem)} EUR',
+                        style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                      ),
                   ],
                 ),
               ),
