@@ -26,13 +26,6 @@ class StatisticsController extends GetxController {
     refresh();
   }
 
-  // Called every time screen is shown
-  @override
-  void onReady() {
-    super.onReady();
-    refresh();
-  }
-
   Future<void> refresh() async {
     airlineStats.value = null;
     await Future.wait(<Future<void>>[

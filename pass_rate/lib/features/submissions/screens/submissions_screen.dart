@@ -7,6 +7,7 @@ import '../../../core/services/firebase_service.dart';
 
 class SubmissionsController extends GetxController {
   final RxBool loading = false.obs;
+  final RxBool hasError = false.obs;
   final RxList<Map<String, dynamic>> submissions = <Map<String, dynamic>>[].obs;
   final RxList<Map<String, dynamic>> filtered = <Map<String, dynamic>>[].obs;
   final TextEditingController searchController = TextEditingController();
@@ -19,12 +20,24 @@ class SubmissionsController extends GetxController {
     searchQuery.listen((_) => _filter());
   }
 
+  @override
+  void onClose() {
+    searchController.dispose();
+    super.onClose();
+  }
+
   Future<void> loadSubmissions() async {
     loading.value = true;
-    final String deviceId = await FirebaseService.getDeviceId();
-    submissions.value = await FirebaseService.getMySubmissions(deviceId);
-    _filter();
-    loading.value = false;
+    hasError.value = false;
+    try {
+      final String deviceId = await FirebaseService.getDeviceId();
+      submissions.value = await FirebaseService.getMySubmissions(deviceId);
+      _filter();
+    } catch (_) {
+      hasError.value = true;
+    } finally {
+      loading.value = false;
+    }
   }
 
   void _filter() {
@@ -55,12 +68,23 @@ class SubmissionsController extends GetxController {
   }
 }
 
-class SubmissionsScreen extends StatelessWidget {
+class SubmissionsScreen extends StatefulWidget {
   const SubmissionsScreen({super.key});
 
   @override
+  State<SubmissionsScreen> createState() => _SubmissionsScreenState();
+}
+
+class _SubmissionsScreenState extends State<SubmissionsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Get.put(SubmissionsController());
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final SubmissionsController c = Get.put(SubmissionsController());
+    final SubmissionsController c = Get.find<SubmissionsController>();
 
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
@@ -89,7 +113,30 @@ class SubmissionsScreen extends StatelessWidget {
             const SizedBox(height: 12),
             Expanded(
               child: Obx(() {
-                if (c.loading.value) return const Center(child: CircularProgressIndicator(color: AppColors.accent));
+                if (c.loading.value) {
+                  return const Center(child: CircularProgressIndicator(color: AppColors.accent));
+                }
+                if (c.hasError.value) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        const Icon(Icons.wifi_off_outlined, color: AppColors.textMuted, size: 48),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Could not load submissions.\nCheck your connection and try again.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+                        ),
+                        const SizedBox(height: 20),
+                        ElevatedButton(
+                          onPressed: c.loadSubmissions,
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
                 if (c.filtered.isEmpty) {
                   return Center(
                     child: Column(

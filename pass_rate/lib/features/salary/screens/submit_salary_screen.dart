@@ -18,6 +18,8 @@ class SubmitSalaryController extends GetxController {
   final RxBool loadingAirlines = true.obs;
   final RxBool loadingCountries = true.obs;
   final RxBool submitting = false.obs;
+  final RxBool loadingAirlinesError = false.obs;
+  final RxBool loadingCountriesError = false.obs;
   String? existingDocId;
 
   final RxMap<String, List<String>> countries = <String, List<String>>{}.obs;
@@ -78,8 +80,11 @@ class SubmitSalaryController extends GetxController {
 
   Future<void> fetchAirlines() async {
     loadingAirlines.value = true;
+    loadingAirlinesError.value = false;
     try {
       airlines.value = await FirebaseService.getAirlines();
+    } catch (_) {
+      loadingAirlinesError.value = true;
     } finally {
       loadingAirlines.value = false;
     }
@@ -87,8 +92,11 @@ class SubmitSalaryController extends GetxController {
 
   Future<void> fetchCountries() async {
     loadingCountries.value = true;
+    loadingCountriesError.value = false;
     try {
       countries.value = await FirebaseService.getCountries();
+    } catch (_) {
+      loadingCountriesError.value = true;
     } finally {
       loadingCountries.value = false;
     }
@@ -125,16 +133,26 @@ class SubmitSalaryController extends GetxController {
   }
 }
 
-class SubmitSalaryScreen extends StatelessWidget {
+class SubmitSalaryScreen extends StatefulWidget {
   final String? existingDocId;
   const SubmitSalaryScreen({super.key, this.existingDocId});
 
   @override
-  Widget build(BuildContext context) {
-    final SubmitSalaryController c = Get.put(SubmitSalaryController());
-    c.existingDocId = existingDocId;
+  State<SubmitSalaryScreen> createState() => _SubmitSalaryScreenState();
+}
 
-    final String title = existingDocId != null ? 'Update Salary' : 'Submit Salary';
+class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
+  @override
+  void initState() {
+    super.initState();
+    final SubmitSalaryController c = Get.put(SubmitSalaryController());
+    c.existingDocId = widget.existingDocId;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final SubmitSalaryController c = Get.find<SubmitSalaryController>();
+    final String title = widget.existingDocId != null ? 'Update Salary' : 'Submit Salary';
 
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
@@ -164,14 +182,23 @@ class SubmitSalaryScreen extends StatelessWidget {
 
             // Airline
             const _FieldLabel('Airline'),
-            Obx(() => c.loadingAirlines.value
-              ? const Center(child: CircularProgressIndicator(color: AppColors.accent))
-              : _AirlineSearchableDropdown(
-                  hint: 'Select Airline',
-                  value: c.selectedAirline.value,
-                  items: c.airlines,
-                  onChanged: (Map<String, dynamic>? v) { c.selectedAirline.value = v; },
-                )),
+            Obx(() {
+              if (c.loadingAirlines.value) {
+                return const Center(child: CircularProgressIndicator(color: AppColors.accent));
+              }
+              if (c.loadingAirlinesError.value) {
+                return _ErrorRetry(
+                  message: 'Could not load airlines.',
+                  onRetry: c.fetchAirlines,
+                );
+              }
+              return _AirlineSearchableDropdown(
+                hint: 'Select Airline',
+                value: c.selectedAirline.value,
+                items: c.airlines,
+                onChanged: (Map<String, dynamic>? v) { c.selectedAirline.value = v; },
+              );
+            }),
             const SizedBox(height: 16),
 
             // Rank
@@ -258,6 +285,12 @@ class SubmitSalaryScreen extends StatelessWidget {
               if (c.loadingCountries.value && c.countries.isEmpty) {
                 return const Center(child: CircularProgressIndicator(color: AppColors.accent));
               }
+              if (c.loadingCountriesError.value && c.countries.isEmpty) {
+                return _ErrorRetry(
+                  message: 'Could not load countries.',
+                  onRetry: c.fetchCountries,
+                );
+              }
               final List<String> countryList = c.countries.keys.toList()..sort();
               return _SearchableDropdown(
                 hint: 'Select Country',
@@ -302,7 +335,7 @@ class SubmitSalaryScreen extends StatelessWidget {
             Obx(() => SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: c.submitting.value ? null : () => _submit(c),
+                onPressed: c.submitting.value ? null : () => _submit(c, title),
                 child: c.submitting.value
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                   : Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
@@ -315,7 +348,7 @@ class SubmitSalaryScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _submit(SubmitSalaryController c) async {
+  Future<void> _submit(SubmitSalaryController c, String title) async {
     if (!c.allCompleted) {
       Get.snackbar(
         'Missing Fields',
@@ -338,6 +371,35 @@ class SubmitSalaryScreen extends StatelessWidget {
         colorText: AppColors.textPrimary,
       );
     }
+  }
+}
+
+class _ErrorRetry extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _ErrorRetry({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: <Widget>[
+          const Icon(Icons.wifi_off_outlined, color: AppColors.textMuted, size: 18),
+          const SizedBox(width: 10),
+          Expanded(child: Text(message, style: const TextStyle(color: AppColors.textMuted, fontSize: 13))),
+          TextButton(
+            onPressed: onRetry,
+            child: const Text('Retry', style: TextStyle(color: AppColors.accent, fontSize: 13)),
+          ),
+        ],
+      ),
+    );
   }
 }
 

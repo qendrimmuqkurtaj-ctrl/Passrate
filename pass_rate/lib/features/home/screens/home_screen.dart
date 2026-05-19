@@ -71,7 +71,7 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   _HomeTile(
                     label: 'Contact & Feedback',
-                    icon: Icons.camera_alt_outlined,
+                    icon: Icons.feedback_outlined,
                     onTap: () => launchUrl(Uri.parse('https://www.instagram.com/passrate.pilot')),
                   ),
                 ],

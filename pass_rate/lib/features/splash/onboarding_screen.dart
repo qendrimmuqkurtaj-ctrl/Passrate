@@ -36,7 +36,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
       body: Stack(
         children: <Widget>[
           Positioned.fill(child: CustomPaint(painter: _DotMapPainter())),
-          // Fly høyere opp
           Positioned(
             bottom: 200,
             right: -20,

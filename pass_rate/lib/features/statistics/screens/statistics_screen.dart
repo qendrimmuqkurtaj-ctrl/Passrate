@@ -4,12 +4,23 @@ import 'package:get/get.dart';
 import '../controllers/statistics_controller.dart';
 import '../../../core/design/app_colors.dart';
 
-class StatisticsScreen extends StatelessWidget {
+class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
 
   @override
+  State<StatisticsScreen> createState() => _StatisticsScreenState();
+}
+
+class _StatisticsScreenState extends State<StatisticsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Get.put(StatisticsController());
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final StatisticsController c = Get.put(StatisticsController());
+    final StatisticsController c = Get.find<StatisticsController>();
 
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
@@ -165,7 +176,7 @@ class StatisticsScreen extends StatelessWidget {
   }
 
   void _showYearPickerDialog(BuildContext context, StatisticsController c) {
-    final List<int> years = List<int>.generate(DateTime.now().year + 1 - 2024 + 1, (int i) => DateTime.now().year + 1 - i);
+    final List<int> years = List<int>.generate(DateTime.now().year - 2024 + 1, (int i) => DateTime.now().year - i);
     Get.dialog(Dialog(
       backgroundColor: AppColors.bgCard,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -348,7 +359,7 @@ class StatisticsScreen extends StatelessWidget {
   }
 
   void _showYearDialog(BuildContext context, int currentYear, Function(int) onSelected) {
-    final List<int> years = List<int>.generate(DateTime.now().year + 1 - 2024 + 1, (int i) => DateTime.now().year + 1 - i);
+    final List<int> years = List<int>.generate(DateTime.now().year - 2024 + 1, (int i) => DateTime.now().year - i);
     Get.dialog(Dialog(
       backgroundColor: AppColors.bgCard,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

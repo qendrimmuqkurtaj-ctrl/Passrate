@@ -1,52 +1,60 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 class FirebaseService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   static Future<String> getDeviceId() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final String? cached = prefs.getString('persistent_device_id');
+    if (cached != null && cached.isNotEmpty) return cached;
+
     final DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+    String id = '';
     try {
       if (Platform.isIOS) {
         final IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
-        return iosInfo.identifierForVendor ?? 'unknown-ios';
+        id = iosInfo.identifierForVendor ?? '';
       } else {
         final AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
-        return androidInfo.id;
+        id = androidInfo.id;
       }
-    } catch (e) {
-      return 'unknown-device';
+    } catch (_) {}
+
+    if (id.isEmpty) {
+      final Random rng = Random.secure();
+      final List<int> bytes = List<int>.generate(16, (_) => rng.nextInt(256));
+      id = bytes.map((int b) => b.toRadixString(16).padLeft(2, '0')).join();
     }
+
+    await prefs.setString('persistent_device_id', id);
+    return id;
   }
 
+  // Propagates exceptions — callers are responsible for error handling.
   static Future<List<Map<String, dynamic>>> getAirlines() async {
-    try {
-      final QuerySnapshot snap = await _db.collection('airlines').get();
-      final List<Map<String, dynamic>> list = snap.docs
-          .map((DocumentSnapshot d) => {'id': d.id, ...d.data() as Map<String, dynamic>})
-          .toList();
-      list.sort((Map<String, dynamic> a, Map<String, dynamic> b) =>
-          (a['name'] as String).compareTo(b['name'] as String));
-      return list;
-    } catch (e) {
-      return <Map<String, dynamic>>[];
-    }
+    final QuerySnapshot snap = await _db.collection('airlines').get();
+    final List<Map<String, dynamic>> list = snap.docs
+        .map((DocumentSnapshot d) => {'id': d.id, ...d.data() as Map<String, dynamic>})
+        .toList();
+    list.sort((Map<String, dynamic> a, Map<String, dynamic> b) =>
+        (a['name'] as String).compareTo(b['name'] as String));
+    return list;
   }
 
+  // Propagates exceptions — callers are responsible for error handling.
   static Future<List<Map<String, dynamic>>> getTasks() async {
-    try {
-      final QuerySnapshot snap = await _db.collection('tasks').get();
-      final List<Map<String, dynamic>> list = snap.docs
-          .map((DocumentSnapshot d) => {'id': d.id, ...d.data() as Map<String, dynamic>})
-          .toList();
-      list.sort((Map<String, dynamic> a, Map<String, dynamic> b) =>
-          (a['name'] as String).compareTo(b['name'] as String));
-      return list;
-    } catch (e) {
-      return <Map<String, dynamic>>[];
-    }
+    final QuerySnapshot snap = await _db.collection('tasks').get();
+    final List<Map<String, dynamic>> list = snap.docs
+        .map((DocumentSnapshot d) => {'id': d.id, ...d.data() as Map<String, dynamic>})
+        .toList();
+    list.sort((Map<String, dynamic> a, Map<String, dynamic> b) =>
+        (a['name'] as String).compareTo(b['name'] as String));
+    return list;
   }
 
   static Future<Map<String, dynamic>> submitAssessment({
@@ -96,19 +104,16 @@ class FirebaseService {
     };
   }
 
+  // Propagates exceptions — callers are responsible for error handling.
   static Future<List<Map<String, dynamic>>> getMySubmissions(String deviceId) async {
-    try {
-      final QuerySnapshot snap = await _db
-          .collection('submissions')
-          .where('deviceId', isEqualTo: deviceId)
-          .orderBy('createdAt', descending: true)
-          .get();
-      return snap.docs
-          .map((DocumentSnapshot d) => {'id': d.id, ...d.data() as Map<String, dynamic>})
-          .toList();
-    } catch (e) {
-      return <Map<String, dynamic>>[];
-    }
+    final QuerySnapshot snap = await _db
+        .collection('submissions')
+        .where('deviceId', isEqualTo: deviceId)
+        .orderBy('createdAt', descending: true)
+        .get();
+    return snap.docs
+        .map((DocumentSnapshot d) => {'id': d.id, ...d.data() as Map<String, dynamic>})
+        .toList();
   }
 
   static Future<bool> deleteSubmission(String id) async {
@@ -231,22 +236,19 @@ class FirebaseService {
     }
   }
 
+  // Propagates exceptions — callers are responsible for error handling.
   static Future<Map<String, List<String>>> getCountries() async {
-    try {
-      final QuerySnapshot snap = await _db.collection('countries').get();
-      final Map<String, List<String>> result = <String, List<String>>{};
-      for (final DocumentSnapshot d in snap.docs) {
-        final Map<String, dynamic> data = d.data() as Map<String, dynamic>;
-        final String name = data['name'] as String? ?? '';
-        final List<dynamic> cities = data['cities'] as List<dynamic>? ?? <dynamic>[];
-        if (name.isNotEmpty) {
-          result[name] = cities.map((dynamic c) => c.toString()).toList();
-        }
+    final QuerySnapshot snap = await _db.collection('countries').get();
+    final Map<String, List<String>> result = <String, List<String>>{};
+    for (final DocumentSnapshot d in snap.docs) {
+      final Map<String, dynamic> data = d.data() as Map<String, dynamic>;
+      final String name = data['name'] as String? ?? '';
+      final List<dynamic> cities = data['cities'] as List<dynamic>? ?? <dynamic>[];
+      if (name.isNotEmpty) {
+        result[name] = cities.map((dynamic c) => c.toString()).toList();
       }
-      return result;
-    } catch (e) {
-      return <String, List<String>>{};
     }
+    return result;
   }
 
   static Future<List<Map<String, dynamic>>> getAllSalaries() async {
@@ -317,7 +319,10 @@ class FirebaseService {
     }
   }
 
+  // Fetches EUR exchange rates with SharedPreferences cache fallback.
   static Future<Map<String, double>> _fetchRates() async {
+    bool apiSuccess = false;
+    Map<String, double> rates = <String, double>{};
     try {
       final HttpClient client = HttpClient();
       final HttpClientRequest request = await client.getUrl(
@@ -330,13 +335,28 @@ class FirebaseService {
         final Map<String, dynamic> json = jsonDecode(body) as Map<String, dynamic>;
         if (json['result'] == 'success') {
           final Map<String, dynamic> r = json['rates'] as Map<String, dynamic>;
-          return r.map((String k, dynamic v) => MapEntry(k, (v as num).toDouble()));
+          rates = r.map((String k, dynamic v) => MapEntry(k, (v as num).toDouble()));
+          apiSuccess = true;
+          final SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString('cached_eur_rates', jsonEncode(rates));
         }
       } else {
         client.close();
       }
     } catch (_) {}
-    return <String, double>{};
+
+    if (!apiSuccess) {
+      try {
+        final SharedPreferences prefs = await SharedPreferences.getInstance();
+        final String? cached = prefs.getString('cached_eur_rates');
+        if (cached != null) {
+          final Map<String, dynamic> decoded = jsonDecode(cached) as Map<String, dynamic>;
+          rates = decoded.map((String k, dynamic v) => MapEntry(k, (v as num).toDouble()));
+        }
+      } catch (_) {}
+    }
+
+    return rates;
   }
 
   static double _toEurAmount(double amount, String currency, Map<String, double> rates) {
@@ -354,6 +374,10 @@ class FirebaseService {
     required String currentDocId,
   }) async {
     final Map<String, double> rates = await _fetchRates();
+
+    // Skip all EUR-conversion checks if rates are unavailable.
+    if (rates.isEmpty && currency != 'EUR') return null;
+
     final double baseSalaryEur = _toEurAmount(baseSalary, currency, rates);
 
     if (baseSalaryEur < 1000) return 'Salary unusually low (under 1,000 EUR)';

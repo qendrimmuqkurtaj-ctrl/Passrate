@@ -6,6 +6,8 @@ class AssessmentController extends GetxController {
   final RxBool loadingAirlines = true.obs;
   final RxBool loadingTasks = true.obs;
   final RxBool submitting = false.obs;
+  final RxBool loadingAirlinesError = false.obs;
+  final RxBool loadingTasksError = false.obs;
 
   final RxList<Map<String, dynamic>> airlines = <Map<String, dynamic>>[].obs;
   final RxList<Map<String, dynamic>> tasks = <Map<String, dynamic>>[].obs;
@@ -43,6 +45,12 @@ class AssessmentController extends GetxController {
     _setDefaultDate();
   }
 
+  @override
+  void onClose() {
+    dateController.dispose();
+    super.onClose();
+  }
+
   void _setDefaultDate() {
     final DateTime now = DateTime.now();
     dateController.text = '${now.year}-${now.month.toString().padLeft(2, '0')}';
@@ -50,14 +58,26 @@ class AssessmentController extends GetxController {
 
   Future<void> loadAirlines() async {
     loadingAirlines.value = true;
-    airlines.value = await FirebaseService.getAirlines();
-    loadingAirlines.value = false;
+    loadingAirlinesError.value = false;
+    try {
+      airlines.value = await FirebaseService.getAirlines();
+    } catch (_) {
+      loadingAirlinesError.value = true;
+    } finally {
+      loadingAirlines.value = false;
+    }
   }
 
   Future<void> loadTasks() async {
     loadingTasks.value = true;
-    tasks.value = await FirebaseService.getTasks();
-    loadingTasks.value = false;
+    loadingTasksError.value = false;
+    try {
+      tasks.value = await FirebaseService.getTasks();
+    } catch (_) {
+      loadingTasksError.value = true;
+    } finally {
+      loadingTasks.value = false;
+    }
   }
 
   void selectAirline(Map<String, dynamic> airline) {

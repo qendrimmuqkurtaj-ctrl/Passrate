@@ -6,13 +6,22 @@ import '../controllers/assessment_controller.dart';
 import '../../../core/design/app_colors.dart';
 import '../../statistics/screens/statistics_screen.dart';
 
-class SubmitAssessmentScreen extends StatelessWidget {
+class SubmitAssessmentScreen extends StatefulWidget {
   const SubmitAssessmentScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    Get.put(AssessmentController());
+  State<SubmitAssessmentScreen> createState() => _SubmitAssessmentScreenState();
+}
 
+class _SubmitAssessmentScreenState extends State<SubmitAssessmentScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Get.put(AssessmentController());
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       appBar: AppBar(
@@ -36,9 +45,18 @@ class SubmitAssessmentScreen extends StatelessWidget {
 
               // Airline dropdown
               _FieldLabel('Airline Name'),
-              Obx(() => c.loadingAirlines.value
-                ? const Center(child: CircularProgressIndicator())
-                : _buildAirlineDropdown(context, c)),
+              Obx(() {
+                if (c.loadingAirlines.value) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (c.loadingAirlinesError.value) {
+                  return _ErrorRetry(
+                    message: 'Could not load airlines.',
+                    onRetry: c.loadAirlines,
+                  );
+                }
+                return _buildAirlineDropdown(context, c);
+              }),
               const SizedBox(height: 16),
 
               // Date picker
@@ -52,11 +70,17 @@ class SubmitAssessmentScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       _FieldLabel('What was included in your assessment?'),
-                      c.loadingTasks.value
-                        ? const Center(child: CircularProgressIndicator())
-                        : c.tasks.isEmpty
-                          ? const Text('No tasks available', style: TextStyle(color: AppColors.textMuted))
-                          : _buildTasksCheckboxes(c),
+                      if (c.loadingTasks.value)
+                        const Center(child: CircularProgressIndicator())
+                      else if (c.loadingTasksError.value)
+                        _ErrorRetry(
+                          message: 'Could not load tasks.',
+                          onRetry: c.loadTasks,
+                        )
+                      else if (c.tasks.isEmpty)
+                        const Text('No tasks available', style: TextStyle(color: AppColors.textMuted))
+                      else
+                        _buildTasksCheckboxes(c),
                       const SizedBox(height: 16),
                     ],
                   )
@@ -341,13 +365,42 @@ class ConfirmScreen extends StatelessWidget {
               )),
               const SizedBox(width: 12),
               Expanded(child: ElevatedButton(
-                onPressed: () => Get.to(() => const StatisticsScreen()),
+                onPressed: () => Get.off(() => const StatisticsScreen()),
                 child: const Text('View Statistics'),
               )),
             ]),
             const SizedBox(height: 20),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ErrorRetry extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _ErrorRetry({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: <Widget>[
+          const Icon(Icons.wifi_off_outlined, color: AppColors.textMuted, size: 18),
+          const SizedBox(width: 10),
+          Expanded(child: Text(message, style: const TextStyle(color: AppColors.textMuted, fontSize: 13))),
+          TextButton(
+            onPressed: onRetry,
+            child: const Text('Retry', style: TextStyle(color: AppColors.accent, fontSize: 13)),
+          ),
+        ],
       ),
     );
   }

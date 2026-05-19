@@ -71,7 +71,7 @@ class SalaryController extends GetxController {
         .where((Map<String, dynamic> s) {
           if (s['rank'] != myRank || s['aircraftType'] != myAircraftType) return false;
           final int seniority = (s['seniorityYears'] as num?)?.toInt() ?? 0;
-          return seniority == mySeniorityYears;
+          return (seniority - mySeniorityYears).abs() <= 2;
         })
         .toList();
     matches.sort((Map<String, dynamic> a, Map<String, dynamic> b) {
@@ -235,10 +235,12 @@ class SalaryController extends GetxController {
   }
 
   Future<void> _fetchAirlineNames() async {
-    final List<Map<String, dynamic>> list = await FirebaseService.getAirlines();
-    airlineNames.value = list
-        .map((Map<String, dynamic> m) => m['name'] as String)
-        .toList();
+    try {
+      final List<Map<String, dynamic>> list = await FirebaseService.getAirlines();
+      airlineNames.value = list
+          .map((Map<String, dynamic> m) => m['name'] as String)
+          .toList();
+    } catch (_) {}
   }
 
   Future<void> deleteMySalary() async {
@@ -383,12 +385,23 @@ class SalaryController extends GetxController {
   }
 }
 
-class SalaryScreen extends StatelessWidget {
+class SalaryScreen extends StatefulWidget {
   const SalaryScreen({super.key});
 
   @override
+  State<SalaryScreen> createState() => _SalaryScreenState();
+}
+
+class _SalaryScreenState extends State<SalaryScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Get.put(SalaryController());
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final SalaryController c = Get.put(SalaryController());
+    final SalaryController c = Get.find<SalaryController>();
 
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,

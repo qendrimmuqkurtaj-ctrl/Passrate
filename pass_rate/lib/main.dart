@@ -70,6 +70,7 @@ Future<void> _checkForUpdate() async {
             ),
             ElevatedButton(
               onPressed: () async {
+                Get.back();
                 final uri = Uri.parse(
                   'https://apps.apple.com/app/id$_appStoreId',
                 );
