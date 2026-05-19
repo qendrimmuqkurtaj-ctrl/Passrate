@@ -487,8 +487,33 @@ class _SalaryScreenState extends State<SalaryScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () async {
-                  await Get.to(() => SubmitSalaryScreen(existingDocId: c.existingDocId));
-                  c.reload();
+                  final bool? confirmed = await Get.dialog<bool>(
+                    AlertDialog(
+                      backgroundColor: AppColors.bgCard,
+                      title: const Text(
+                        'Before you submit',
+                        style: TextStyle(color: AppColors.textPrimary),
+                      ),
+                      content: const Text(
+                        'Your salary data will be verified against other pilots at the same airline. Submitting false information may result in your data being removed and access being revoked.',
+                        style: TextStyle(color: AppColors.textMuted),
+                      ),
+                      actions: <Widget>[
+                        TextButton(
+                          onPressed: () => Get.back(result: false),
+                          child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+                        ),
+                        TextButton(
+                          onPressed: () => Get.back(result: true),
+                          child: const Text('I understand — Continue', style: TextStyle(color: AppColors.accent)),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed == true) {
+                    await Get.to(() => SubmitSalaryScreen(existingDocId: c.existingDocId));
+                    c.reload();
+                  }
                 },
                 child: const Text(
                   "I'm employed — submit my salary",
@@ -496,28 +521,43 @@ class _SalaryScreenState extends State<SalaryScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 6),
-            const Text(
-              "Submit your salary once to unlock exact figures, seniority data and full details from every pilot in our database.",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textMuted, fontSize: 12, height: 1.4),
-            ),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                onPressed: () => c.setJobHunting(),
+                onPressed: () async {
+                  final bool? confirmed = await Get.dialog<bool>(
+                    AlertDialog(
+                      backgroundColor: AppColors.bgCard,
+                      title: const Text(
+                        'Salary ranges ahead',
+                        style: TextStyle(color: AppColors.textPrimary),
+                      ),
+                      content: const Text(
+                        "You'll see average salary ranges based on real pilot submissions. Submit your own salary when you land a job to unlock exact figures.",
+                        style: TextStyle(color: AppColors.textMuted),
+                      ),
+                      actions: <Widget>[
+                        TextButton(
+                          onPressed: () => Get.back(result: false),
+                          child: const Text('Back', style: TextStyle(color: AppColors.textMuted)),
+                        ),
+                        TextButton(
+                          onPressed: () => Get.back(result: true),
+                          child: const Text('Got it — Browse ranges', style: TextStyle(color: AppColors.accent)),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed == true) {
+                    c.setJobHunting();
+                  }
+                },
                 child: const Text(
                   "I'm seeking a position",
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
               ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              "View average salary ranges across European airlines to know what to expect before your first offer.",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textMuted, fontSize: 12, height: 1.4),
             ),
             const SizedBox(height: 24),
             const Text(
