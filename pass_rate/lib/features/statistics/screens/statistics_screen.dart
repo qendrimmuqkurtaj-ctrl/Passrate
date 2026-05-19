@@ -63,9 +63,19 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
             // Search results
             Obx(() {
+              if (c.isLoadingSearch.value) return const SizedBox.shrink();
               final Map<String, dynamic>? stats = c.airlineStats.value;
-              if (stats == null) return const SizedBox.shrink();
-              return _buildSearchResult(context, c, stats);
+              if (stats != null) return _buildSearchResult(context, c, stats);
+              if (c.hasSearched.value) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Text(
+                    'No results found for ${c.selectedAirlineName.value} in ${c.searchYear.value}. Try a different year or check back later.',
+                    style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
             }),
 
             const SizedBox(height: 8),

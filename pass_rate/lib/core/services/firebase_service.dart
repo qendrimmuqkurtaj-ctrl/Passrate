@@ -109,11 +109,20 @@ class FirebaseService {
     final QuerySnapshot snap = await _db
         .collection('submissions')
         .where('deviceId', isEqualTo: deviceId)
-        .orderBy('createdAt', descending: true)
         .get();
-    return snap.docs
+    final List<Map<String, dynamic>> list = snap.docs
         .map((DocumentSnapshot d) => {'id': d.id, ...d.data() as Map<String, dynamic>})
         .toList();
+    // Sort client-side to avoid requiring a composite Firestore index.
+    list.sort((Map<String, dynamic> a, Map<String, dynamic> b) {
+      final Timestamp? ta = a['createdAt'] as Timestamp?;
+      final Timestamp? tb = b['createdAt'] as Timestamp?;
+      if (ta == null && tb == null) return 0;
+      if (ta == null) return 1;
+      if (tb == null) return -1;
+      return tb.compareTo(ta);
+    });
+    return list;
   }
 
   static Future<bool> deleteSubmission(String id) async {
@@ -234,6 +243,17 @@ class FirebaseService {
     } catch (e) {
       return null;
     }
+  }
+
+  // Propagates exceptions — callers are responsible for error handling.
+  static Future<List<String>> getAircraftTypes() async {
+    final QuerySnapshot snap = await _db.collection('aircraftTypes').get();
+    final List<String> list = snap.docs
+        .map((DocumentSnapshot d) => (d.data() as Map<String, dynamic>)['name'] as String? ?? '')
+        .where((String s) => s.isNotEmpty)
+        .toList()
+      ..sort();
+    return list;
   }
 
   // Propagates exceptions — callers are responsible for error handling.

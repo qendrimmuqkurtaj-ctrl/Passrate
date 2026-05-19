@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../controllers/assessment_controller.dart';
 import '../../../core/design/app_colors.dart';
+import '../../home/screens/home_screen.dart';
 import '../../statistics/screens/statistics_screen.dart';
 
 class SubmitAssessmentScreen extends StatefulWidget {
@@ -195,7 +196,7 @@ class _SubmitAssessmentScreenState extends State<SubmitAssessmentScreen> {
                     children: <Widget>[
                       IconButton(icon: const Icon(CupertinoIcons.chevron_left, color: AppColors.textPrimary), onPressed: () => setState(() { if (selectedYear > 2024) selectedYear--; })),
                       Text('$selectedYear', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                      IconButton(icon: const Icon(CupertinoIcons.chevron_right, color: AppColors.textPrimary), onPressed: () => setState(() { if (selectedYear < now.year) selectedYear++; })),
+                      IconButton(icon: const Icon(CupertinoIcons.chevron_right, color: AppColors.textPrimary), onPressed: () => setState(() { if (selectedYear < now.year) { selectedYear++; if (selectedYear == now.year && selectedMonth > now.month) selectedMonth = now.month; } })),
                     ],
                   ),
                 ],
@@ -208,16 +209,27 @@ class _SubmitAssessmentScreenState extends State<SubmitAssessmentScreen> {
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, childAspectRatio: 2, crossAxisSpacing: 8, mainAxisSpacing: 8),
                 itemCount: 12,
                 itemBuilder: (BuildContext context, int i) {
-                  final bool isSelected = selectedMonth == i + 1;
+                  final int month = i + 1;
+                  final bool isSelected = selectedMonth == month;
+                  final bool isFuture = selectedYear == now.year && month > now.month;
                   return GestureDetector(
-                    onTap: () => setState(() => selectedMonth = i + 1),
+                    onTap: isFuture ? null : () => setState(() => selectedMonth = month),
                     child: Container(
                       decoration: BoxDecoration(
                         color: isSelected ? AppColors.accent : AppColors.bgCard,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: AppColors.border),
                       ),
-                      child: Center(child: Text(DateFormat('MMM').format(DateTime(2024, i + 1)), style: TextStyle(color: isSelected ? Colors.white : AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w500))),
+                      child: Center(child: Text(
+                        DateFormat('MMM').format(DateTime(2024, month)),
+                        style: TextStyle(
+                          color: isFuture
+                              ? AppColors.textMuted.withValues(alpha: 0.4)
+                              : (isSelected ? Colors.white : AppColors.textPrimary),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      )),
                     ),
                   );
                 },
@@ -365,7 +377,7 @@ class ConfirmScreen extends StatelessWidget {
               )),
               const SizedBox(width: 12),
               Expanded(child: ElevatedButton(
-                onPressed: () => Get.off(() => const StatisticsScreen()),
+                onPressed: () { Get.offAll(() => const HomeScreen()); Get.to(() => const StatisticsScreen()); },
                 child: const Text('View Statistics'),
               )),
             ]),

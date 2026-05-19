@@ -17,10 +17,13 @@ const List<String> kAircraftTypes = <String>[
 class SubmitSalaryController extends GetxController {
   final RxBool loadingAirlines = true.obs;
   final RxBool loadingCountries = true.obs;
+  final RxBool loadingAircraftTypes = true.obs;
   final RxBool submitting = false.obs;
   final RxBool loadingAirlinesError = false.obs;
   final RxBool loadingCountriesError = false.obs;
   String? existingDocId;
+
+  final RxList<String> aircraftTypeOptions = <String>[].obs;
 
   final RxMap<String, List<String>> countries = <String, List<String>>{}.obs;
 
@@ -67,6 +70,7 @@ class SubmitSalaryController extends GetxController {
     super.onInit();
     fetchAirlines();
     fetchCountries();
+    fetchAircraftTypes();
   }
 
   @override
@@ -99,6 +103,18 @@ class SubmitSalaryController extends GetxController {
       loadingCountriesError.value = true;
     } finally {
       loadingCountries.value = false;
+    }
+  }
+
+  Future<void> fetchAircraftTypes() async {
+    loadingAircraftTypes.value = true;
+    try {
+      final List<String> types = await FirebaseService.getAircraftTypes();
+      aircraftTypeOptions.value = types.isNotEmpty ? types : kAircraftTypes;
+    } catch (_) {
+      aircraftTypeOptions.value = kAircraftTypes;
+    } finally {
+      loadingAircraftTypes.value = false;
     }
   }
 
@@ -225,12 +241,17 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
 
             // Aircraft type
             const _FieldLabel('Aircraft Type'),
-            Obx(() => _SearchableDropdown(
-              hint: 'Select Aircraft Type',
-              value: c.selectedAircraftType.value.isEmpty ? null : c.selectedAircraftType.value,
-              items: kAircraftTypes,
-              onChanged: (String? v) { if (v != null) c.selectedAircraftType.value = v; },
-            )),
+            Obx(() {
+              if (c.loadingAircraftTypes.value) {
+                return const Center(child: CircularProgressIndicator(color: AppColors.accent));
+              }
+              return _SearchableDropdown(
+                hint: 'Select Aircraft Type',
+                value: c.selectedAircraftType.value.isEmpty ? null : c.selectedAircraftType.value,
+                items: c.aircraftTypeOptions,
+                onChanged: (String? v) { if (v != null) c.selectedAircraftType.value = v; },
+              );
+            }),
             const SizedBox(height: 16),
 
             // Contract type

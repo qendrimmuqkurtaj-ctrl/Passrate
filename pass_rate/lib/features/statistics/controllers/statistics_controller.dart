@@ -7,6 +7,7 @@ class StatisticsController extends GetxController {
   final RxBool isLoadingPassRate = false.obs;
   final RxBool isLoadingSubmission = false.obs;
   final RxBool isLoadingSearch = false.obs;
+  final RxBool hasSearched = false.obs;
 
   final RxList<Map<String, dynamic>> topByPassRate = <Map<String, dynamic>>[].obs;
   final RxList<Map<String, dynamic>> topBySubmission = <Map<String, dynamic>>[].obs;
@@ -52,10 +53,12 @@ class StatisticsController extends GetxController {
       return;
     }
     isLoadingSearch.value = true;
+    hasSearched.value = false;
     airlineStats.value = await FirebaseService.getAirlineStatistics(
       airlineName: selectedAirlineName.value,
       year: searchYear.value,
     );
+    hasSearched.value = true;
     isLoadingSearch.value = false;
   }
 }
