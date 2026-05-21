@@ -231,7 +231,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 ],
               ),
             ),
-            const Icon(Icons.keyboard_arrow_down, color: AppColors.accent),
+            if (hasValue)
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => c.selectedAirlineName.value = '',
+                child: const Icon(Icons.close, color: AppColors.accent, size: 20),
+              )
+            else
+              const Icon(Icons.keyboard_arrow_down, color: AppColors.accent),
           ],
         ),
       ),
@@ -899,15 +906,27 @@ class _AirlineSearchSheetState extends State<_AirlineSearchSheet> {
           SizedBox(
             height: 300,
             child: ListView.builder(
-              itemCount: _visible.length,
-              itemBuilder: (BuildContext ctx, int i) => InkWell(
-                onTap: () => Navigator.of(ctx).pop(_visible[i]),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
-                  child: Text(_visible[i],
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
-                ),
-              ),
+              itemCount: _visible.length + 1,
+              itemBuilder: (BuildContext ctx, int i) {
+                if (i == 0) {
+                  return InkWell(
+                    onTap: () => Navigator.of(ctx).pop(''),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+                      child: Text('All Airlines',
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
+                    ),
+                  );
+                }
+                return InkWell(
+                  onTap: () => Navigator.of(ctx).pop(_visible[i - 1]),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+                    child: Text(_visible[i - 1],
+                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(height: 8),
