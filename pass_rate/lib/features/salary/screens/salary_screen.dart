@@ -641,12 +641,18 @@ class _SalaryScreenState extends State<SalaryScreen> {
   Widget _buildSearchPage(SalaryController c) {
     return Column(
       children: <Widget>[
-        // Search bar + filters (fixed)
+        // Fixed search bar and filters (non-scrolling)
         Container(
           color: AppColors.bgPrimary,
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
+              const Text(
+                'SEARCH SALARIES',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 1.2),
+              ),
+              const SizedBox(height: 12),
               _buildSearchBar(c),
               const SizedBox(height: 8),
               _buildFilters(c),
@@ -654,17 +660,23 @@ class _SalaryScreenState extends State<SalaryScreen> {
           ),
         ),
 
-        // Scrollable content
+        // Scrollable content (insights + salary cards)
         Expanded(
           child: Obx(() {
             final List<Map<String, dynamic>> results = c.filtered;
             final List<Map<String, dynamic>> peers = c.pilotsLikeMe;
             final List<Map<String, dynamic>> bestCountries = c.bestPaidCountriesForMyRank;
             return ListView(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
               children: <Widget>[
 
-                // ── Pilots like you ──────────────────────────────────────
+                // ── YOUR INSIGHTS ────────────────────────────────────────
+                const Text(
+                  'YOUR INSIGHTS',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 1.2),
+                ),
+                const SizedBox(height: 12),
+
                 const Text(
                   'Pilots like you',
                   style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
@@ -689,7 +701,6 @@ class _SalaryScreenState extends State<SalaryScreen> {
 
                 const SizedBox(height: 20),
 
-                // ── Best paid countries ──────────────────────────────────
                 Text(
                   'Best paid countries for ${c.myRank} pilots (based on submitted salaries)',
                   style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
@@ -700,9 +711,9 @@ class _SalaryScreenState extends State<SalaryScreen> {
                 else
                   _BestCountriesCard(countries: bestCountries),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 const Divider(color: AppColors.border, height: 1),
-                const SizedBox(height: 10),
+                const SizedBox(height: 16),
 
                 // ── Results count ────────────────────────────────────────
                 Text(
