@@ -301,6 +301,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       ? const Icon(CupertinoIcons.check_mark, color: AppColors.accent)
                       : null,
                   onTap: () {
+                    if (years[i] == 0) c.selectedAirlineName.value = '';
                     c.searchYear.value = years[i];
                     Get.back();
                   },
