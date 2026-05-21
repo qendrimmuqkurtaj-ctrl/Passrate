@@ -92,19 +92,28 @@ class SalaryController extends GetxController {
   // Top 3 highest-paid submissions matching user's rank and aircraft type.
   List<Map<String, dynamic>> get pilotsLikeMe {
     if (myRank.isEmpty || myAircraftType.isEmpty) return <Map<String, dynamic>>[];
-    final List<Map<String, dynamic>> matches = salaries
+
+    double toEurLocal(Map<String, dynamic> s) =>
+        toEur((s['baseSalary'] as num?)?.toDouble() ?? 0, s['currency'] as String? ?? '');
+
+    List<Map<String, dynamic>> byDelta(int maxDelta) => salaries
         .where((Map<String, dynamic> s) {
           if (s['rank'] != myRank || s['aircraftType'] != myAircraftType) return false;
           final int seniority = (s['seniorityYears'] as num?)?.toInt() ?? 0;
-          return (seniority - mySeniorityYears).abs() <= 2;
+          return (seniority - mySeniorityYears).abs() == maxDelta;
         })
-        .toList();
-    matches.sort((Map<String, dynamic> a, Map<String, dynamic> b) {
-      final double eurA = toEur((a['baseSalary'] as num?)?.toDouble() ?? 0, a['currency'] as String? ?? '');
-      final double eurB = toEur((b['baseSalary'] as num?)?.toDouble() ?? 0, b['currency'] as String? ?? '');
-      return eurB.compareTo(eurA);
-    });
-    return matches.take(3).toList();
+        .toList()
+      ..sort((Map<String, dynamic> a, Map<String, dynamic> b) =>
+          toEurLocal(b).compareTo(toEurLocal(a)));
+
+    final List<Map<String, dynamic>> result = <Map<String, dynamic>>[];
+    for (int delta = 0; delta <= 2 && result.length < 3; delta++) {
+      for (final Map<String, dynamic> s in byDelta(delta)) {
+        if (result.length >= 3) break;
+        result.add(s);
+      }
+    }
+    return result;
   }
 
   // Top 3 countries by the single highest-paid individual submission for the current user's rank.

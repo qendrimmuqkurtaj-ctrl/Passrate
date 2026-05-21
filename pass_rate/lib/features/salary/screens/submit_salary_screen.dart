@@ -207,10 +207,13 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
           children: <Widget>[
             _buildStepHeader(ctrl),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              child: GestureDetector(
+                onTap: () => FocusScope.of(context).unfocus(),
+                behavior: HitTestBehavior.opaque,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
 
                     // ── POSITION ─────────────────────────────────────────────
@@ -250,10 +253,10 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
 
                     // Seniority
                     const _FieldLabel('Seniority (years)'),
-                    Obx(() => _OptionDrop(
+                    Obx(() => _SimpleDrop(
                       hint: 'Select years of seniority',
                       value: c.selectedSeniority.value.isEmpty ? null : c.selectedSeniority.value,
-                      options: List<String>.generate(30, (int i) => '${i + 1}'),
+                      count: 30,
                       onChanged: (String? v) {
                         if (v != null) { c.selectedSeniority.value = v; c.update(); }
                       },
@@ -394,6 +397,7 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                 ),
               ),
             ),
+          ),
           ],
         ),
       ),
@@ -782,6 +786,125 @@ class _OptionDrop extends StatelessWidget {
       builder: (_) => _SearchSheet(hint: hint, items: options),
     );
     if (picked != null) onChanged(picked);
+  }
+}
+
+// ── Simple picker (no search, no keyboard) ────────────────────────────────
+
+class _SimpleDrop extends StatelessWidget {
+  final String hint;
+  final String? value;
+  final int count;
+  final ValueChanged<String?> onChanged;
+
+  const _SimpleDrop({
+    required this.hint,
+    required this.value,
+    required this.count,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final String? display = value != null ? '$value yr' : null;
+    return GestureDetector(
+      onTap: () => _open(context),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.bgCard,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: value != null ? AppColors.accent : AppColors.border),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                display ?? hint,
+                style: TextStyle(
+                  color: value != null ? AppColors.textPrimary : AppColors.textMuted,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            const Icon(Icons.keyboard_arrow_down, color: AppColors.accent),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _open(BuildContext context) async {
+    final String? picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.bgCard,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _SimplePickerSheet(selected: value, count: count),
+    );
+    if (picked != null) onChanged(picked);
+  }
+}
+
+class _SimplePickerSheet extends StatelessWidget {
+  final String? selected;
+  final int count;
+
+  const _SimplePickerSheet({required this.selected, required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          const SizedBox(height: 12),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Seniority (years)',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 300,
+            child: ListView.builder(
+              itemCount: count,
+              itemBuilder: (BuildContext ctx, int i) {
+                final String item = '${i + 1}';
+                final bool isSelected = selected == item;
+                return ListTile(
+                  title: Text(
+                    '$item yr',
+                    style: TextStyle(
+                      color: isSelected ? AppColors.accent : AppColors.textPrimary,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                  trailing: isSelected
+                      ? const Icon(Icons.check, color: AppColors.accent, size: 20)
+                      : null,
+                  onTap: () => Navigator.of(ctx).pop(item),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
