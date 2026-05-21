@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PassRate — Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0D1B2A;--navy2:#1A2C40;--navy3:#243447;--accent:#1D9E75;--accent2:#17B584;--red:#E24B4A;--amber:#EF9F27;--blue:#1A8FD1;--text:#F0F4F8;--text2:#8FA3B8;--text3:#5A7A94;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);--card:#162233;--radius:10px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--navy);color:var(--text);min-height:100vh}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--navy2);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:1.5rem 0;z-index:100}
+.logo{padding:0 1.25rem 1.5rem;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);margin-bottom:1rem}
+.logo-icon{width:34px;height:34px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:18px}
+.logo-text{font-size:15px;font-weight:600}
+.logo-sub{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace}
+.nav-item{padding:0.65rem 1.25rem;margin:2px 0.5rem;display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--text2);cursor:pointer;border-radius:8px;transition:all 0.15s;font-weight:500}
+.nav-item:hover{background:var(--navy3);color:var(--text)}
+.nav-item.active{background:rgba(29,158,117,0.15);color:var(--accent2)}
+.sidebar-footer{margin-top:auto;padding:1rem 1.25rem 0;border-top:1px solid var(--border)}
+.api-badge{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);background:var(--navy3);padding:5px 8px;border-radius:6px;line-height:1.5}
+.main{margin-left:220px;padding:2rem;min-height:100vh}
+.page{display:none}.page.active{display:block}
+.page-header{margin-bottom:1.75rem}
+.page-title{font-size:22px;font-weight:600}
+.page-sub{font-size:13px;color:var(--text2);margin-top:4px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:14px;margin-bottom:1.75rem}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.1rem 1.25rem}
+.stat-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px}
+.stat-value{font-size:28px;font-weight:600;font-family:'DM Mono',monospace}
+.stat-card.green .stat-value{color:var(--accent2)}
+.stat-card.red .stat-value{color:var(--red)}
+.stat-card.amber .stat-value{color:var(--amber)}
+.stat-card.blue .stat-value{color:var(--blue)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1.25rem}
+.card-header{padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.card-title{font-size:14px;font-weight:600}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:0.7rem 1.25rem;font-size:11px;font-weight:500;color:var(--text3);border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:0.05em}
+td{padding:0.8rem 1.25rem;font-size:13.5px;border-bottom:1px solid var(--border);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,0.02)}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px}
+.badge.pass{background:rgba(29,158,117,0.15);color:#17B584}
+.badge.fail{background:rgba(226,75,74,0.15);color:#E97675}
+.badge.count{background:var(--navy3);color:var(--text2);font-family:'DM Mono',monospace}
+.badge.so{background:rgba(94,94,255,0.15);color:#8888ff}
+.badge.fo{background:rgba(26,143,209,0.15);color:#1A8FD1}
+.badge.captain{background:rgba(239,159,39,0.15);color:#EF9F27}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:0.5rem 1rem;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.15s;font-family:'DM Sans',sans-serif;border:none}
+.btn-primary{background:var(--accent);color:white}.btn-primary:hover{background:var(--accent2)}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2)}.btn-ghost:hover{background:var(--navy3);color:var(--text)}
+.btn-danger{background:rgba(226,75,74,0.12);color:#E97675;border:1px solid rgba(226,75,74,0.2)}.btn-danger:hover{background:rgba(226,75,74,0.22)}
+.btn-sm{padding:0.35rem 0.75rem;font-size:12px}
+.form-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1rem}
+.form-group{display:flex;flex-direction:column;gap:6px;flex:1;min-width:160px}
+.form-label{font-size:12px;color:var(--text2);font-weight:500}
+.form-input{background:var(--navy2);border:1px solid var(--border2);color:var(--text);border-radius:8px;padding:0.55rem 0.85rem;font-size:13px;font-family:'DM Sans',sans-serif;transition:border 0.15s;outline:none}
+.form-input:focus{border-color:var(--accent)}.form-input::placeholder{color:var(--text3)}
+select.form-input option{background:var(--navy2)}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.bar-row{display:flex;align-items:center;gap:10px;padding:0.75rem 1.25rem;border-bottom:1px solid var(--border)}
+.bar-row:last-child{border-bottom:none}
+.bar-name{width:170px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0}
+.bar-track{flex:1;height:6px;background:var(--navy3);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;background:var(--accent)}
+.bar-pct{font-size:12px;color:var(--text2);min-width:36px;text-align:right;font-family:'DM Mono',monospace}
+.bar-count{font-size:11px;color:var(--text3);min-width:65px;text-align:right}
+.state-box{padding:3rem;text-align:center;color:var(--text3);font-size:13px}
+.spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pagination{display:flex;align-items:center;gap:8px;padding:0.85rem 1.25rem;border-top:1px solid var(--border);font-size:12px;color:var(--text3)}
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--navy2);border:1px solid var(--border2);color:var(--text);padding:0.75rem 1.1rem;border-radius:10px;font-size:13px;display:flex;align-items:center;gap:8px;opacity:0;transform:translateY(8px);transition:all 0.25s;z-index:999}
+.toast.show{opacity:1;transform:translateY(0)}.toast.success{border-color:rgba(29,158,117,0.5)}.toast.error{border-color:rgba(226,75,74,0.5)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;z-index:200;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.modal-overlay.show{opacity:1;pointer-events:all}
+.modal{background:var(--card);border:1px solid var(--border2);border-radius:14px;padding:1.75rem;width:420px;max-width:95vw}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:1rem}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:1.5rem}
+.city-chip{display:inline-flex;align-items:center;gap:3px;background:var(--navy3);color:var(--text2);font-size:11px;padding:3px 4px 3px 9px;border-radius:20px;margin:2px}
+.city-chip-del{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:0 4px;line-height:1;border-radius:50%}
+.city-chip-del:hover{color:var(--red);background:rgba(226,75,74,0.15)}
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <div class="logo"><div class="logo-icon">✈</div><div><div class="logo-text">PassRate</div><div class="logo-sub">Admin Panel</div></div></div>
+  <div class="nav-item active" onclick="showPage('dashboard',this)">📊 Dashboard</div>
+  <div class="nav-item" onclick="showPage('submissions',this)">📋 Submissions</div>
+  <div class="nav-item" onclick="showPage('salaries',this)">💰 Salaries</div>
+  <div class="nav-item" onclick="showPage('airlines',this)">✈️ Airlines</div>
+  <div class="nav-item" onclick="showPage('tasks',this)">☑️ Tasks</div>
+  <div class="nav-item" onclick="showPage('aircraft',this)">✈ Aircraft Types</div>
+  <div class="nav-item" onclick="showPage('countries',this)">🌍 Countries & Cities</div>
+  <div class="sidebar-footer"><div class="api-badge">Firebase: passrate-4360d</div></div>
+</div>
+
+<div class="main">
+  <div class="page active" id="page-dashboard">
+    <div class="page-header"><div class="page-title">Dashboard</div><div class="page-sub">Overview of all submitted results</div></div>
+    <div class="stats">
+      <div class="stat-card"><div class="stat-label">Total Submitted</div><div class="stat-value" id="d-total">—</div></div>
+      <div class="stat-card green"><div class="stat-label">Pass rate</div><div class="stat-value" id="d-passrate">—</div></div>
+      <div class="stat-card red"><div class="stat-label">Failed</div><div class="stat-value" id="d-failed">—</div></div>
+      <div class="stat-card amber"><div class="stat-label">Airlines</div><div class="stat-value" id="d-airlines">—</div></div>
+      <div class="stat-card blue"><div class="stat-label">Salary reports</div><div class="stat-value" id="d-salaries">—</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Top airlines — pass rate</span><button class="btn btn-ghost btn-sm" onclick="loadDashboard()">↻ Refresh</button></div>
+      <div id="d-chart"><div class="state-box"><div class="spinner"></div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">💰 Top Paid Airlines (salary)</span></div>
+      <div id="d-sal-airlines"><div class="state-box"><div class="spinner"></div></div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:1.25rem">
+      <div class="card" style="margin-bottom:0">
+        <div class="card-header"><span class="card-title">📊 Average salary per rank</span></div>
+        <div id="d-sal-rank"><div class="state-box"><div class="spinner"></div></div></div>
+      </div>
+      <div class="card" style="margin-bottom:0">
+        <div class="card-header"><span class="card-title">🌍 Top Paid Countries</span></div>
+        <div id="d-sal-country"><div class="state-box"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="page-submissions">
+    <div class="page-header"><div class="page-title">Submissions</div><div class="page-sub">All submitted pilot assessment results</div></div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Filter</span>
+        <div class="filters">
+          <select class="form-input" id="f-airline" onchange="filterSubs()" style="width:180px"><option value="">All airlines</option></select>
+          <select class="form-input" id="f-year" onchange="filterSubs()" style="width:110px"><option value="">All years</option></select>
+          <select class="form-input" id="f-result" onchange="filterSubs()" style="width:150px"><option value="">All results</option><option value="passed">✅ Passed</option><option value="failed">❌ Failed</option></select>
+          <button class="btn btn-ghost btn-sm" onclick="loadSubmissions()">↻ Refresh</button>
+        </div>
+      </div>
+      <div id="sub-table"><div class="state-box"><div class="spinner"></div></div></div>
+      <div class="pagination" id="sub-pages" style="display:flex;gap:8px;align-items:center"><span class="badge count" id="sub-count">—</span></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-salaries">
+    <div class="page-header"><div class="page-title">Salary Reports</div><div class="page-sub">All submitted salary reports from pilots</div></div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Filter</span>
+        <div class="filters">
+          <select class="form-input" id="sf-airline" onchange="filterSalaries()" style="width:180px"><option value="">All airlines</option></select>
+          <select class="form-input" id="sf-rank" onchange="filterSalaries()" style="width:130px"><option value="">All ranks</option><option value="SO">Second Officer</option><option value="FO">First Officer</option><option value="Captain">Captain</option></select>
+          <select class="form-input" id="sf-country" onchange="filterSalaries()" style="width:140px"><option value="">All countries</option></select>
+          <select class="form-input" id="sf-flagged" onchange="filterSalaries()" style="width:140px"><option value="">All statuses</option><option value="flagged">⚠️ Flagged only</option><option value="ok">✓ OK only</option></select>
+          <button class="btn btn-ghost btn-sm" onclick="loadSalaries()">↻ Refresh</button>
+        </div>
+      </div>
+      <div id="sal-table"><div class="state-box"><div class="spinner"></div></div></div>
+      <div class="pagination" id="sal-pages" style="display:flex;gap:8px;align-items:center"><span class="badge count" id="sal-count">—</span></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-airlines">
+    <div class="page-header"><div class="page-title">Airlines</div><div class="page-sub">Manage airlines in the app</div></div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">➕ Add new airline</span></div>
+      <div style="padding:1.25rem">
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Name *</label><input class="form-input" id="new-airline-name" placeholder="e.g. Norwegian Air Shuttle" /></div>
+          <div class="form-group" style="max-width:130px"><label class="form-label">IATA code</label><input class="form-input" id="new-airline-code" placeholder="e.g. DY" /></div>
+          <div class="form-group"><label class="form-label">Country</label><input class="form-input" id="new-airline-country" placeholder="e.g. Norway" /></div>
+        </div>
+        <button class="btn btn-primary" onclick="addAirline()">➕ Add airline</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">All airlines</span><div style="display:flex;gap:8px;align-items:center"><span class="badge count" id="air-count">—</span><button class="btn btn-ghost btn-sm" onclick="loadAirlines()">↻ Refresh</button></div></div>
+      <div id="air-table"><div class="state-box"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-tasks">
+    <div class="page-header"><div class="page-title">Tasks</div><div class="page-sub">Manage assessment tasks in the app</div></div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">➕ Add new task</span></div>
+      <div style="padding:1.25rem">
+        <div class="form-row"><div class="form-group"><label class="form-label">Task name *</label><input class="form-input" id="new-task-name" placeholder="e.g. Simulator" /></div></div>
+        <button class="btn btn-primary" onclick="addTask()">➕ Add task</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">All tasks</span><div style="display:flex;gap:8px;align-items:center"><span class="badge count" id="task-count">—</span><button class="btn btn-ghost btn-sm" onclick="loadTasks()">↻ Refresh</button></div></div>
+      <div id="task-table"><div class="state-box"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-aircraft">
+    <div class="page-header"><div class="page-title">Aircraft Types</div><div class="page-sub">Manage aircraft types for the salary feature</div></div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">➕ Add new aircraft type</span></div>
+      <div style="padding:1.25rem">
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Aircraft type *</label><input class="form-input" id="new-aircraft-name" placeholder="e.g. A320" /></div>
+          <div class="form-group" style="max-width:180px"><label class="form-label">Category</label><select class="form-input" id="new-aircraft-category"><option value="Narrowbody">Narrowbody</option><option value="Widebody">Widebody</option><option value="Regional">Regional</option><option value="Turboprop">Turboprop</option></select></div>
+          <div class="form-group" style="max-width:150px"><label class="form-label">Manufacturer</label><input class="form-input" id="new-aircraft-manufacturer" placeholder="e.g. Airbus" /></div>
+        </div>
+        <button class="btn btn-primary" onclick="addAircraft()">➕ Add aircraft type</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">All aircraft types</span><div style="display:flex;gap:8px;align-items:center"><span class="badge count" id="aircraft-count">—</span><button class="btn btn-ghost btn-sm" onclick="loadAircraft()">↻ Refresh</button></div></div>
+      <div id="aircraft-table"><div class="state-box"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+
+  <div class="page" id="page-countries">
+    <div class="page-header"><div class="page-title">Countries & Cities</div><div class="page-sub">Manage countries and bases for the salary feature</div></div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">➕ Add new country</span></div>
+      <div style="padding:1.25rem">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Country *</label>
+            <input class="form-input" id="new-country-name" placeholder="e.g. France" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Cities * (comma-separated)</label>
+            <input class="form-input" id="new-country-cities" placeholder="e.g. Paris, Lyon, Nice, Toulouse" />
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="addCountry()">➕ Add country</button>
+        <button class="btn btn-ghost" onclick="seedDefaultCountries()" style="margin-left:10px">🌍 Seed all European countries</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">All countries and cities</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="badge count" id="country-count">—</span>
+          <button class="btn btn-ghost btn-sm" onclick="loadCountries()">↻ Refresh</button>
+        </div>
+      </div>
+      <div id="country-table"><div class="state-box"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete confirmation modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Confirm deletion</div>
+    <p style="color:var(--text2);font-size:13px" id="modal-body"></p>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-danger" onclick="confirmDelete()">Yes, delete</button></div>
+  </div>
+</div>
+
+<!-- Add city to country modal -->
+<div class="modal-overlay" id="add-city-overlay">
+  <div class="modal">
+    <div class="modal-title">➕ Add city</div>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:1rem">Add a new city to <strong id="add-city-country-name" style="color:var(--text)"></strong></p>
+    <input class="form-input" id="new-city-input" placeholder="City/base name" style="width:100%" onkeydown="if(event.key==='Enter')confirmAddCity()" />
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeAddCityModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmAddCity()">Add</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import{getFirestore,collection,getDocs,addDoc,deleteDoc,doc,updateDoc,arrayUnion,arrayRemove,writeBatch}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const app=initializeApp({apiKey:"AIzaSyAACELQ70qc3CbCAQm3XMASRZDR5f54j7A",authDomain:"passrate-4360d.firebaseapp.com",projectId:"passrate-4360d",storageBucket:"passrate-4360d.firebasestorage.app",messagingSenderId:"5132550360",appId:"1:5132550360:web:ad83d58796f85980c1d7ad"});
+const db=getFirestore(app);
+
+let allSubs=[],filteredSubs=[],subPage=0;
+let allSalaries=[],filteredSalaries=[],salPage=0;
+let deleteId=null,deleteCol=null;
+let addCityDocId=null;
+const PAGE=25;
+
+function toast(msg,type='success'){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(type==='error'?'error':'success');setTimeout(()=>t.className='toast',2800)}
+function isPassed(s){return s.result==='passed'||(s.passed===true)||(typeof s.result==='string'&&s.result.toLowerCase().includes('pass'))}
+function escJs(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}
+
+window.showPage=function(name,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(el)el.classList.add('active');
+  if(name==='dashboard')loadDashboard();
+  if(name==='submissions')loadSubmissions();
+  if(name==='salaries')loadSalaries();
+  if(name==='airlines')loadAirlines();
+  if(name==='tasks')loadTasks();
+  if(name==='aircraft')loadAircraft();
+  if(name==='countries')loadCountries();
+};
+
+window.openModal=function(id,name,col){deleteId=id;deleteCol=col;document.getElementById('modal-body').textContent=`Are you sure you want to delete "${name}"?`;document.getElementById('modal-overlay').classList.add('show')};
+window.closeModal=function(){document.getElementById('modal-overlay').classList.remove('show');deleteId=null;deleteCol=null};
+
+window.loadDashboard=async function(){
+  try{
+    const [ss,as,sals]=await Promise.all([getDocs(collection(db,'submissions')),getDocs(collection(db,'airlines')),getDocs(collection(db,'salaries'))]);
+    const subs=ss.docs.map(d=>({id:d.id,...d.data()})),airlines=as.docs.map(d=>({id:d.id,...d.data()}));
+    const passed=subs.filter(isPassed).length;
+    document.getElementById('d-total').textContent=subs.length;
+    document.getElementById('d-passrate').textContent=subs.length?Math.round(passed/subs.length*100)+'%':'—';
+    document.getElementById('d-failed').textContent=subs.length-passed;
+    document.getElementById('d-airlines').textContent=airlines.length;
+    document.getElementById('d-salaries').textContent=sals.size;
+    const map={};
+    subs.forEach(s=>{const a=s.airline||'Unknown';if(!map[a])map[a]={pass:0,total:0};map[a].total++;if(isPassed(s))map[a].pass++});
+    const sorted=Object.entries(map).sort((a,b)=>(b[1].pass/b[1].total)-(a[1].pass/a[1].total)).slice(0,10);
+    if(!sorted.length){document.getElementById('d-chart').innerHTML='<div class="state-box">No data yet</div>';return}
+    document.getElementById('d-chart').innerHTML=sorted.map(([name,d])=>{const pct=Math.round(d.pass/d.total*100);return `<div class="bar-row"><div class="bar-name">${name}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div><div class="bar-pct">${pct}%</div><div class="bar-count">${d.total} submitted</div></div>`}).join('');
+    const salDocs=sals.docs.map(d=>({...d.data()}));
+    if(!salDocs.length){
+      ['d-sal-airlines','d-sal-rank','d-sal-country'].forEach(id=>document.getElementById(id).innerHTML='<div class="state-box">No salary data yet</div>');
+    } else {
+      // Fetch EUR exchange rates for currency normalization
+      let rates={};
+      try{
+        const r=await fetch('https://open.er-api.com/v6/latest/EUR');
+        if(r.ok){const j=await r.json();if(j.result==='success')rates=j.rates;}
+      }catch(_){}
+      const toEur=(amt,cur)=>{if(!cur||cur==='EUR')return amt;const rate=rates[cur];return rate?amt/rate:0;};
+
+      const airMap={};
+      salDocs.forEach(s=>{const a=s.airline||'Unknown';const eur=toEur(Number(s.baseSalary||0),s.currency);if(eur<=0)return;if(!airMap[a])airMap[a]={total:0,count:0};airMap[a].total+=eur;airMap[a].count++});
+      const topAirlines=Object.entries(airMap).map(([a,d])=>({name:a,avg:Math.round(d.total/d.count)})).sort((a,b)=>b.avg-a.avg).slice(0,5);
+      const maxSal=topAirlines[0]?.avg||1;
+      document.getElementById('d-sal-airlines').innerHTML=topAirlines.length?topAirlines.map(a=>`<div class="bar-row"><div class="bar-name">${a.name}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(a.avg/maxSal*100)}%;background:var(--blue)"></div></div><div class="bar-pct" style="color:var(--blue);min-width:90px">€${a.avg.toLocaleString()}</div></div>`).join(''):'<div class="state-box">No convertible salary data</div>';
+
+      const rankMap={};
+      salDocs.forEach(s=>{const r=s.rank||'Unknown';const eur=toEur(Number(s.baseSalary||0),s.currency);if(eur<=0)return;if(!rankMap[r])rankMap[r]={total:0,count:0};rankMap[r].total+=eur;rankMap[r].count++});
+      document.getElementById('d-sal-rank').innerHTML=Object.keys(rankMap).length?`<table><thead><tr><th>Rank</th><th>Avg Salary (EUR)</th><th>Reports</th></tr></thead><tbody>${Object.entries(rankMap).map(([r,d])=>`<tr><td><span class="badge ${r==='Captain'?'captain':r==='SO'?'so':'fo'}">${r}</span></td><td style="font-family:'DM Mono',monospace;color:var(--blue)">€${Math.round(d.total/d.count).toLocaleString()}</td><td style="color:var(--text3)">${d.count}</td></tr>`).join('')}</tbody></table>`:'<div class="state-box">No convertible salary data</div>';
+
+      const countryMap={};
+      salDocs.forEach(s=>{const c=s.country||'Unknown';const eur=toEur(Number(s.baseSalary||0),s.currency);if(eur<=0)return;if(!countryMap[c])countryMap[c]={total:0,count:0};countryMap[c].total+=eur;countryMap[c].count++});
+      const topCountries=Object.entries(countryMap).map(([c,d])=>({name:c,avg:Math.round(d.total/d.count)})).sort((a,b)=>b.avg-a.avg).slice(0,5);
+      document.getElementById('d-sal-country').innerHTML=topCountries.length?`<table><thead><tr><th>Country</th><th>Avg Salary (EUR)</th><th>Reports</th></tr></thead><tbody>${topCountries.map(c=>`<tr><td style="font-weight:500">${c.name}</td><td style="font-family:'DM Mono',monospace;color:var(--accent2)">€${c.avg.toLocaleString()}</td><td style="color:var(--text3)">${countryMap[c.name].count}</td></tr>`).join('')}</tbody></table>`:'<div class="state-box">No convertible salary data</div>';
+    }
+  }catch(e){document.getElementById('d-chart').innerHTML=`<div class="state-box">⚠️ ${e.message}</div>`}
+};
+
+window.loadSubmissions=async function(){
+  document.getElementById('sub-table').innerHTML='<div class="state-box"><div class="spinner"></div></div>';
+  try{
+    const data=await getDocs(collection(db,'submissions'));
+    allSubs=data.docs.map(d=>({id:d.id,...d.data()}));
+    const airlines=new Set(),years=new Set();
+    allSubs.forEach(s=>{if(s.airline)airlines.add(s.airline);if(s.year)years.add(s.year)});
+    document.getElementById('f-airline').innerHTML='<option value="">All airlines</option>'+[...airlines].sort().map(a=>`<option value="${a}">${a}</option>`).join('');
+    document.getElementById('f-year').innerHTML='<option value="">All years</option>'+[...years].sort((a,b)=>b-a).map(y=>`<option value="${y}">${y}</option>`).join('');
+    filterSubs();
+  }catch(e){document.getElementById('sub-table').innerHTML=`<div class="state-box">⚠️ ${e.message}</div>`}
+};
+
+window.filterSubs=function(){
+  const af=document.getElementById('f-airline').value,yf=document.getElementById('f-year').value,rf=document.getElementById('f-result').value;
+  filteredSubs=allSubs.filter(s=>{
+    if(af&&(s.airline||'')!==af)return false;
+    if(yf&&String(s.year||'')!==yf)return false;
+    if(rf==='passed'&&!isPassed(s))return false;
+    if(rf==='failed'&&isPassed(s))return false;
+    return true;
+  });
+  subPage=0;renderSubs();
+};
+
+function renderSubs(){
+  const slice=filteredSubs.slice(subPage*PAGE,(subPage+1)*PAGE);
+  if(!slice.length){document.getElementById('sub-table').innerHTML='<div class="state-box">No results</div>';document.getElementById('sub-pages').innerHTML='<span class="badge count">0 results</span>';return}
+  document.getElementById('sub-table').innerHTML=`<table><thead><tr><th>#</th><th>Airline</th><th>Year</th><th>Month</th><th>Result</th><th>Tasks</th></tr></thead><tbody>${slice.map((s,i)=>{const pass=isPassed(s),tasks=(s.assessments||[]).join(', ')||'—';return `<tr><td style="color:var(--text3);font-size:12px">${subPage*PAGE+i+1}</td><td>${s.airline||'—'}</td><td style="font-family:'DM Mono',monospace">${s.year||'—'}</td><td>${s.month||'—'}</td><td><span class="badge ${pass?'pass':'fail'}">${pass?'✅ Passed':'❌ Failed'}</span></td><td style="color:var(--text2);font-size:12px">${tasks}</td></tr>`}).join('')}</tbody></table>`;
+  const pages=Math.ceil(filteredSubs.length/PAGE);
+  document.getElementById('sub-pages').innerHTML=`<span class="badge count">${filteredSubs.length} results</span>`+(pages>1?`<button class="btn btn-ghost btn-sm" onclick="changePage(-1)" ${subPage===0?'disabled':''}>← Previous</button><span>Page ${subPage+1} of ${pages}</span><button class="btn btn-ghost btn-sm" onclick="changePage(1)" ${subPage>=pages-1?'disabled':''}>Next →</button>`:'');
+}
+window.changePage=function(d){subPage=Math.max(0,subPage+d);renderSubs()};
+
+window.loadSalaries=async function(){
+  document.getElementById('sal-table').innerHTML='<div class="state-box"><div class="spinner"></div></div>';
+  try{
+    const data=await getDocs(collection(db,'salaries'));
+    allSalaries=data.docs.map(d=>({id:d.id,...d.data()}));
+    const airlines=new Set(),countries=new Set();
+    allSalaries.forEach(s=>{if(s.airline)airlines.add(s.airline);if(s.country)countries.add(s.country)});
+    document.getElementById('sf-airline').innerHTML='<option value="">All airlines</option>'+[...airlines].sort().map(a=>`<option value="${a}">${a}</option>`).join('');
+    document.getElementById('sf-country').innerHTML='<option value="">All countries</option>'+[...countries].sort().map(c=>`<option value="${c}">${c}</option>`).join('');
+    filterSalaries();
+  }catch(e){document.getElementById('sal-table').innerHTML=`<div class="state-box">⚠️ ${e.message}</div>`}
+};
+
+window.filterSalaries=function(){
+  const af=document.getElementById('sf-airline').value,rf=document.getElementById('sf-rank').value,cf=document.getElementById('sf-country').value,ff=document.getElementById('sf-flagged').value;
+  filteredSalaries=allSalaries.filter(s=>{
+    if(af&&(s.airline||'')!==af)return false;
+    if(rf&&(s.rank||'')!==rf)return false;
+    if(cf&&(s.country||'')!==cf)return false;
+    if(ff==='flagged'&&!s.flagged)return false;
+    if(ff==='ok'&&s.flagged)return false;
+    return true;
+  });
+  salPage=0;renderSalaries();
+};
+
+function renderSalaries(){
+  const slice=filteredSalaries.slice(salPage*PAGE,(salPage+1)*PAGE);
+  if(!slice.length){document.getElementById('sal-table').innerHTML='<div class="state-box">No salary reports yet</div>';document.getElementById('sal-pages').innerHTML='<span class="badge count">0 reports</span>';return}
+  document.getElementById('sal-table').innerHTML=`<table><thead><tr><th>#</th><th>Airline</th><th>Rank</th><th>Seniority</th><th>Aircraft</th><th>Contract</th><th>Base Salary</th><th>Per diem</th><th>Country</th><th>Base</th><th>Currency</th><th>Status</th><th>Action</th></tr></thead><tbody>${slice.map((s,i)=>`<tr style="${s.flagged?'background:rgba(226,75,74,0.06)':''}">
+    <td style="color:var(--text3);font-size:12px">${salPage*PAGE+i+1}</td>
+    <td style="font-weight:500">${s.airline||'—'}</td>
+    <td><span class="badge ${s.rank==='Captain'?'captain':s.rank==='SO'?'so':'fo'}">${s.rank||'—'}</span></td>
+    <td style="font-family:'DM Mono',monospace;color:var(--text2)">${s.seniorityYears||'—'} yr</td>
+    <td style="color:var(--text2)">${s.aircraftType||'—'}</td>
+    <td style="color:var(--text2)">${s.contractType||'—'}</td>
+    <td style="font-family:'DM Mono',monospace;color:#17B584;font-weight:600">${s.baseSalary?Number(s.baseSalary).toLocaleString():'—'}</td>
+    <td style="font-family:'DM Mono',monospace;color:var(--text2)">${s.perDiem?Number(s.perDiem).toLocaleString():'—'}</td>
+    <td style="color:var(--text2)">${s.country||'—'}</td>
+    <td style="color:var(--text2)">${s.base||'—'}</td>
+    <td style="color:var(--text3);font-size:12px">${s.currency||'—'}</td>
+    <td>${s.flagged?`<span class="badge fail" title="${s.flagReason||''}">⚠️ Flagged</span>`:'<span class="badge pass">✓ OK</span>'}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="openModal('${s.id}','salary report','salaries')">🗑️ Delete</button></td>
+  </tr>`).join('')}</tbody></table>`;
+  const pages=Math.ceil(filteredSalaries.length/PAGE);
+  document.getElementById('sal-pages').innerHTML=`<span class="badge count">${filteredSalaries.length} reports</span>`+(pages>1?`<button class="btn btn-ghost btn-sm" onclick="changeSalPage(-1)" ${salPage===0?'disabled':''}>← Previous</button><span>Page ${salPage+1} of ${pages}</span><button class="btn btn-ghost btn-sm" onclick="changeSalPage(1)" ${salPage>=pages-1?'disabled':''}>Next →</button>`:'');
+}
+window.changeSalPage=function(d){salPage=Math.max(0,salPage+d);renderSalaries()};
+
+window.loadAirlines=async function(){
+  document.getElementById('air-table').innerHTML='<div class="state-box"><div class="spinner"></div></div>';
+  try{
+    const data=await getDocs(collection(db,'airlines'));
+    const list=data.docs.map(d=>({id:d.id,...d.data()}));
+    document.getElementById('air-count').textContent=list.length+' airlines';
+    if(!list.length){document.getElementById('air-table').innerHTML='<div class="state-box">No airlines yet</div>';return}
+    document.getElementById('air-table').innerHTML=`<table><thead><tr><th>Name</th><th>IATA</th><th>Country</th><th>Action</th></tr></thead><tbody>${list.map(a=>`<tr><td style="font-weight:500">${a.name||'—'}</td><td style="font-family:'DM Mono',monospace;color:var(--text2)">${a.code||'—'}</td><td style="color:var(--text2)">${a.country||'—'}</td><td><button class="btn btn-danger btn-sm" onclick="openModal('${a.id}','${escJs(a.name||'')}','airlines')">🗑️ Delete</button></td></tr>`).join('')}</tbody></table>`;
+  }catch(e){document.getElementById('air-table').innerHTML=`<div class="state-box">⚠️ ${e.message}</div>`}
+};
+
+window.addAirline=async function(){
+  const name=document.getElementById('new-airline-name').value.trim();
+  const code=document.getElementById('new-airline-code').value.trim().toUpperCase();
+  const country=document.getElementById('new-airline-country').value.trim();
+  if(!name){toast('Enter a name','error');return}
+  try{
+    await addDoc(collection(db,'airlines'),{name,code,country,createdAt:new Date()});
+    document.getElementById('new-airline-name').value='';
+    document.getElementById('new-airline-code').value='';
+    document.getElementById('new-airline-country').value='';
+    toast('✈️ '+name+' added!');loadAirlines();
+  }catch(e){toast('Error: '+e.message,'error')}
+};
+
+window.loadTasks=async function(){
+  if(!document.getElementById('task-table'))return;
+  document.getElementById('task-table').innerHTML='<div class="state-box"><div class="spinner"></div></div>';
+  try{
+    const data=await getDocs(collection(db,'tasks'));
+    const list=data.docs.map(d=>({id:d.id,...d.data()}));
+    document.getElementById('task-count').textContent=list.length+' tasks';
+    if(!list.length){document.getElementById('task-table').innerHTML='<div class="state-box">No tasks yet — add the first one!</div>';return}
+    document.getElementById('task-table').innerHTML=`<table><thead><tr><th>Task name</th><th>Action</th></tr></thead><tbody>${list.map(t=>`<tr><td style="font-weight:500">${t.name||'—'}</td><td><button class="btn btn-danger btn-sm" onclick="openModal('${t.id}','${escJs(t.name||'')}','tasks')">🗑️ Delete</button></td></tr>`).join('')}</tbody></table>`;
+  }catch(e){document.getElementById('task-table').innerHTML=`<div class="state-box">⚠️ ${e.message}</div>`}
+};
+
+window.addTask=async function(){
+  const name=document.getElementById('new-task-name').value.trim();
+  if(!name){toast('Enter a task name','error');return}
+  try{
+    await addDoc(collection(db,'tasks'),{name,createdAt:new Date()});
+    document.getElementById('new-task-name').value='';
+    toast('☑️ '+name+' added!');loadTasks();
+  }catch(e){toast('Error: '+e.message,'error')}
+};
+
+window.confirmDelete=async function(){
+  if(!deleteId||!deleteCol)return;
+  const id=deleteId,col=deleteCol;closeModal();
+  try{
+    await deleteDoc(doc(db,col,id));
+    toast('Deleted!');
+    if(col==='airlines')loadAirlines();
+    if(col==='tasks')loadTasks();
+    if(col==='salaries')loadSalaries();
+    if(col==='aircraftTypes')loadAircraft();
+    if(col==='countries')loadCountries();
+  }catch(e){toast('Error: '+e.message,'error')}
+};
+
+window.loadAircraft=async function(){
+  document.getElementById('aircraft-table').innerHTML='<div class="state-box"><div class="spinner"></div></div>';
+  try{
+    const data=await getDocs(collection(db,'aircraftTypes'));
+    const list=data.docs.map(d=>({id:d.id,...d.data()}));
+    document.getElementById('aircraft-count').textContent=list.length+' aircraft types';
+    if(!list.length){document.getElementById('aircraft-table').innerHTML='<div class="state-box">No aircraft types yet — add the first one!</div>';return}
+    document.getElementById('aircraft-table').innerHTML=`<table><thead><tr><th>Aircraft Type</th><th>Category</th><th>Manufacturer</th><th>Action</th></tr></thead><tbody>${list.map(a=>`<tr><td style="font-weight:500;font-family:'DM Mono',monospace">${a.name||'—'}</td><td><span class="badge count">${a.category||'—'}</span></td><td style="color:var(--text2)">${a.manufacturer||'—'}</td><td><button class="btn btn-danger btn-sm" onclick="openModal('${a.id}','${escJs(a.name||'')}','aircraftTypes')">🗑️ Delete</button></td></tr>`).join('')}</tbody></table>`;
+  }catch(e){document.getElementById('aircraft-table').innerHTML=`<div class="state-box">⚠️ ${e.message}</div>`}
+};
+
+window.addAircraft=async function(){
+  const name=document.getElementById('new-aircraft-name').value.trim().toUpperCase();
+  const category=document.getElementById('new-aircraft-category').value;
+  const manufacturer=document.getElementById('new-aircraft-manufacturer').value.trim();
+  if(!name){toast('Enter aircraft type','error');return}
+  try{
+    await addDoc(collection(db,'aircraftTypes'),{name,category,manufacturer,createdAt:new Date()});
+    document.getElementById('new-aircraft-name').value='';
+    document.getElementById('new-aircraft-manufacturer').value='';
+    toast('✈ '+name+' added!');loadAircraft();
+  }catch(e){toast('Error: '+e.message,'error')}
+};
+
+// ── Countries & Cities ────────────────────────────────────────────────────────
+
+window.loadCountries=async function(){
+  document.getElementById('country-table').innerHTML='<div class="state-box"><div class="spinner"></div></div>';
+  try{
+    const data=await getDocs(collection(db,'countries'));
+    const list=data.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    document.getElementById('country-count').textContent=list.length+' countries';
+    if(!list.length){document.getElementById('country-table').innerHTML='<div class="state-box">No countries yet — add the first one!</div>';return}
+    document.getElementById('country-table').innerHTML=`<table><thead><tr><th>Country</th><th>Cities</th><th style="white-space:nowrap">Action</th></tr></thead><tbody>${list.map(c=>{
+      const cities=Array.isArray(c.cities)?c.cities:[];
+      const chips=cities.map(city=>`<span class="city-chip">${city}<button class="city-chip-del" onclick="deleteCityFromCountry('${c.id}','${escJs(city)}','${escJs(c.name||'')}')" title="Delete ${city}">×</button></span>`).join('');
+      return `<tr>
+        <td style="font-weight:500;white-space:nowrap;vertical-align:middle">${c.name||'—'}</td>
+        <td style="line-height:2">${chips}<button class="btn btn-ghost btn-sm" style="margin:2px;vertical-align:middle" onclick="openAddCityModal('${c.id}','${escJs(c.name||'')}')">+ City</button></td>
+        <td style="vertical-align:middle;white-space:nowrap"><button class="btn btn-danger btn-sm" onclick="openModal('${c.id}','${escJs(c.name||'')}','countries')">🗑️ Delete</button></td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+  }catch(e){document.getElementById('country-table').innerHTML=`<div class="state-box">⚠️ ${e.message}</div>`}
+};
+
+window.addCountry=async function(){
+  const name=document.getElementById('new-country-name').value.trim();
+  const citiesRaw=document.getElementById('new-country-cities').value.trim();
+  if(!name){toast('Enter a country name','error');return}
+  const cities=citiesRaw.split(',').map(c=>c.trim()).filter(Boolean);
+  if(!cities.length){toast('Add at least one city','error');return}
+  try{
+    await addDoc(collection(db,'countries'),{name,cities,createdAt:new Date()});
+    document.getElementById('new-country-name').value='';
+    document.getElementById('new-country-cities').value='';
+    toast('🌍 '+name+' added!');loadCountries();
+  }catch(e){toast('Error: '+e.message,'error')}
+};
+
+window.openAddCityModal=function(docId,countryName){
+  addCityDocId=docId;
+  document.getElementById('add-city-country-name').textContent=countryName;
+  document.getElementById('new-city-input').value='';
+  document.getElementById('add-city-overlay').classList.add('show');
+  setTimeout(()=>document.getElementById('new-city-input').focus(),100);
+};
+
+window.closeAddCityModal=function(){
+  document.getElementById('add-city-overlay').classList.remove('show');
+  addCityDocId=null;
+};
+
+window.confirmAddCity=async function(){
+  const city=document.getElementById('new-city-input').value.trim();
+  if(!city){toast('Enter a city name','error');return}
+  if(!addCityDocId)return;
+  const id=addCityDocId;
+  closeAddCityModal();
+  try{
+    await updateDoc(doc(db,'countries',id),{cities:arrayUnion(city)});
+    toast('✅ '+city+' added!');loadCountries();
+  }catch(e){toast('Error: '+e.message,'error')}
+};
+
+window.deleteCityFromCountry=async function(docId,city,countryName){
+  if(!confirm(`Delete "${city}" from ${countryName}?`))return;
+  try{
+    await updateDoc(doc(db,'countries',docId),{cities:arrayRemove(city)});
+    toast(city+' deleted!');loadCountries();
+  }catch(e){toast('Error: '+e.message,'error')}
+};
+
+const DEFAULT_COUNTRIES=[
+  {name:'Austria',cities:['Vienna','Innsbruck','Salzburg']},
+  {name:'Belgium',cities:['Brussels','Liège']},
+  {name:'Bulgaria',cities:['Sofia']},
+  {name:'Croatia',cities:['Zagreb','Split','Dubrovnik']},
+  {name:'Cyprus',cities:['Nicosia','Larnaca']},
+  {name:'Czech Republic',cities:['Prague','Brno']},
+  {name:'Denmark',cities:['Copenhagen','Aarhus']},
+  {name:'Estonia',cities:['Tallinn']},
+  {name:'Finland',cities:['Helsinki','Tampere']},
+  {name:'France',cities:['Paris','Lyon','Nice','Toulouse','Bordeaux']},
+  {name:'Germany',cities:['Frankfurt','Munich','Berlin','Hamburg','Düsseldorf','Cologne']},
+  {name:'Greece',cities:['Athens','Thessaloniki']},
+  {name:'Hungary',cities:['Budapest']},
+  {name:'Iceland',cities:['Reykjavik']},
+  {name:'Ireland',cities:['Dublin','Shannon']},
+  {name:'Italy',cities:['Rome','Milan','Turin','Venice','Naples']},
+  {name:'Latvia',cities:['Riga']},
+  {name:'Lithuania',cities:['Vilnius']},
+  {name:'Luxembourg',cities:['Luxembourg City']},
+  {name:'Malta',cities:['Malta']},
+  {name:'Netherlands',cities:['Amsterdam','Eindhoven','Rotterdam']},
+  {name:'Norway',cities:['Oslo','Bergen','Stavanger','Trondheim']},
+  {name:'Poland',cities:['Warsaw','Krakow','Gdansk']},
+  {name:'Portugal',cities:['Lisbon','Porto','Faro']},
+  {name:'Romania',cities:['Bucharest','Cluj']},
+  {name:'Serbia',cities:['Belgrade']},
+  {name:'Slovakia',cities:['Bratislava']},
+  {name:'Slovenia',cities:['Ljubljana']},
+  {name:'Spain',cities:['Madrid','Barcelona','Seville','Malaga','Valencia']},
+  {name:'Sweden',cities:['Stockholm','Gothenburg','Malmö']},
+  {name:'Switzerland',cities:['Zurich','Geneva','Basel']},
+  {name:'Turkey',cities:['Istanbul','Ankara','Izmir']},
+  {name:'UK',cities:['London','Manchester','Birmingham','Edinburgh','Bristol']},
+  {name:'Qatar',cities:['Doha']},
+  {name:'UAE',cities:['Dubai','Abu Dhabi']},
+];
+
+window.seedDefaultCountries=async function(){
+  if(!confirm('This will add all standard European countries. Existing countries with the same name will be skipped. Continue?'))return;
+  try{
+    const existing=await getDocs(collection(db,'countries'));
+    const existingNames=new Set(existing.docs.map(d=>d.data().name));
+    const toAdd=DEFAULT_COUNTRIES.filter(c=>!existingNames.has(c.name));
+    if(!toAdd.length){toast('All countries already exist!');return}
+    const batch=writeBatch(db);
+    toAdd.forEach(c=>batch.set(doc(collection(db,'countries')),{...c,createdAt:new Date()}));
+    await batch.commit();
+    toast('🌍 '+toAdd.length+' countries added!');
+    loadCountries();
+  }catch(e){toast('Error: '+e.message,'error')}
+};
+
+loadDashboard();
+</script>
+</body>
+</html>
