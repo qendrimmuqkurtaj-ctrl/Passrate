@@ -60,7 +60,9 @@ class SalaryController extends GetxController {
         if (sel == '<3y') return seniority < 3;
         if (sel == '3-6y') return seniority >= 3 && seniority <= 6;
         if (sel == '7-10y') return seniority >= 7 && seniority <= 10;
-        if (sel == '10+y') return seniority > 10;
+        if (sel == '11-15y') return seniority >= 11 && seniority <= 15;
+        if (sel == '16-20y') return seniority >= 16 && seniority <= 20;
+        if (sel == '20+y') return seniority > 20;
         return true;
       }).toList();
     }
@@ -916,34 +918,33 @@ class _SalaryScreenState extends State<SalaryScreen> {
         ),
         const SizedBox(height: 8),
         Obx(() {
-          const List<String> chips = <String>['<3y', '3-6y', '7-10y', '10+y'];
-          return Row(
+          const List<String> chips = <String>['<3y', '3-6y', '7-10y', '11-15y', '16-20y', '20+y'];
+          return Wrap(
+            spacing: 8,
+            runSpacing: 6,
             children: chips.map((String chip) {
               final bool selected = c.filterSeniority.value == chip;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: GestureDetector(
-                  onTap: () => c.filterSeniority.value = selected ? '' : chip,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? AppColors.accent.withValues(alpha: 0.15)
-                          : AppColors.bgCard,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: selected ? AppColors.accent : AppColors.border,
-                        width: selected ? 1.5 : 1.0,
-                      ),
+              return GestureDetector(
+                onTap: () => c.filterSeniority.value = selected ? '' : chip,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppColors.accent.withValues(alpha: 0.15)
+                        : AppColors.bgCard,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: selected ? AppColors.accent : AppColors.border,
+                      width: selected ? 1.5 : 1.0,
                     ),
-                    child: Text(
-                      chip,
-                      style: TextStyle(
-                        color: selected ? AppColors.accent : AppColors.textMuted,
-                        fontSize: 12,
-                        fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                      ),
+                  ),
+                  child: Text(
+                    chip,
+                    style: TextStyle(
+                      color: selected ? AppColors.accent : AppColors.textMuted,
+                      fontSize: 12,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
                     ),
                   ),
                 ),

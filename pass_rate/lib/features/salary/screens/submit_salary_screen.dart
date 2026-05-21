@@ -253,7 +253,7 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                     Obx(() => _OptionDrop(
                       hint: 'Select years of seniority',
                       value: c.selectedSeniority.value.isEmpty ? null : c.selectedSeniority.value,
-                      options: List<String>.generate(20, (int i) => '${i + 1}'),
+                      options: List<String>.generate(30, (int i) => '${i + 1}'),
                       onChanged: (String? v) {
                         if (v != null) { c.selectedSeniority.value = v; c.update(); }
                       },
