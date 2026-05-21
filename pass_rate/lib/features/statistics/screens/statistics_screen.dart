@@ -522,8 +522,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                           ),
                         ),
 
-                        // Assessment chips
-                        if (assessments.isNotEmpty) ...<Widget>[
+                        // Assessment chips — hidden for All Time (cross-year data is not meaningful per task)
+                        if (assessments.isNotEmpty && stats['year'] != 0) ...<Widget>[
                           const SizedBox(height: 16),
                           const Divider(color: AppColors.border, height: 1),
                           const SizedBox(height: 14),
