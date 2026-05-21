@@ -48,10 +48,6 @@ class StatisticsController extends GetxController {
   }
 
   Future<void> searchStatistics() async {
-    if (selectedAirlineName.value.isEmpty) {
-      Get.snackbar('Error', 'Please select an airline', snackPosition: SnackPosition.BOTTOM);
-      return;
-    }
     isLoadingSearch.value = true;
     hasSearched.value = false;
     airlineStats.value = await FirebaseService.getAirlineStatistics(

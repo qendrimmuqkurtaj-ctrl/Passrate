@@ -148,9 +148,8 @@ class FirebaseService {
     required int year, // 0 = all time
   }) async {
     try {
-      Query<Map<String, dynamic>> query = _db
-          .collection('submissions')
-          .where('airline', isEqualTo: airlineName);
+      Query<Map<String, dynamic>> query = _db.collection('submissions');
+      if (airlineName.isNotEmpty) query = query.where('airline', isEqualTo: airlineName);
       if (year != 0) query = query.where('year', isEqualTo: year);
       final QuerySnapshot snap = await query.get();
 
@@ -185,7 +184,7 @@ class FirebaseService {
       final List<String> assessments = sortedEntries.map((MapEntry<String, int> e) => e.key).toList();
 
       return <String, dynamic>{
-        'airlineName': airlineName,
+        'airlineName': airlineName.isEmpty ? 'All Airlines' : airlineName,
         'year': year,
         'totalSubmissions': total,
         'pass': passedCount,

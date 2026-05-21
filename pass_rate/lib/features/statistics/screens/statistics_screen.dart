@@ -19,6 +19,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   String _yearLabel(int year) => year == 0 ? 'All Time' : '$year';
+  String _airlineLabel(String name) => name.isEmpty ? 'All Airlines' : name;
 
   Color _rateColor(double rate) {
     if (rate >= 80) return AppColors.passText;
@@ -119,7 +120,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'No results for ${c.selectedAirlineName.value} in ${_yearLabel(c.searchYear.value)}. Try a different year.',
+                          'No results for ${_airlineLabel(c.selectedAirlineName.value)} in ${_yearLabel(c.searchYear.value)}. Try a different year.',
                           style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
                         ),
                       ),
@@ -192,7 +193,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     final List<String> names = c.assessmentController.airlines
         .map((Map<String, dynamic> a) => a['name'] as String)
         .toList();
-    final bool hasValue = c.selectedAirlineName.value.isNotEmpty;
     return GestureDetector(
       onTap: () async {
         final String? picked = await showModalBottomSheet<String>(
@@ -210,7 +210,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         decoration: BoxDecoration(
           color: AppColors.bgPrimary,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: hasValue ? AppColors.accent : AppColors.border),
+          border: Border.all(color: AppColors.border),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Row(
@@ -222,23 +222,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   const Text('Airline', style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 2),
                   Text(
-                    hasValue ? c.selectedAirlineName.value : 'Choose an airline',
-                    style: TextStyle(
-                      color: hasValue ? AppColors.textPrimary : AppColors.textMuted,
-                      fontSize: 14,
-                    ),
+                    _airlineLabel(c.selectedAirlineName.value),
+                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
                   ),
                 ],
               ),
             ),
-            if (hasValue)
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => c.selectedAirlineName.value = '',
-                child: const Icon(Icons.close, color: AppColors.accent, size: 20),
-              )
-            else
-              const Icon(Icons.keyboard_arrow_down, color: AppColors.accent),
+            const Icon(Icons.keyboard_arrow_down, color: AppColors.accent),
           ],
         ),
       ),
@@ -914,7 +904,7 @@ class _AirlineSearchSheetState extends State<_AirlineSearchSheet> {
                     child: const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 13),
                       child: Text('All Airlines',
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
+                        style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
                     ),
                   );
                 }
