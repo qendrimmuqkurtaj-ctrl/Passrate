@@ -145,14 +145,14 @@ class FirebaseService {
 
   static Future<Map<String, dynamic>?> getAirlineStatistics({
     required String airlineName,
-    required int year,
+    required int year, // 0 = all time
   }) async {
     try {
-      final QuerySnapshot snap = await _db
+      Query<Map<String, dynamic>> query = _db
           .collection('submissions')
-          .where('airline', isEqualTo: airlineName)
-          .where('year', isEqualTo: year)
-          .get();
+          .where('airline', isEqualTo: airlineName);
+      if (year != 0) query = query.where('year', isEqualTo: year);
+      final QuerySnapshot snap = await query.get();
 
       if (snap.docs.isEmpty) return null;
 
@@ -201,7 +201,10 @@ class FirebaseService {
 
   static Future<List<Map<String, dynamic>>> getTopAirlinesByPassRate(int year) async {
     try {
-      final QuerySnapshot snap = await _db.collection('submissions').where('year', isEqualTo: year).get();
+      final Query<Map<String, dynamic>> q = year == 0
+          ? _db.collection('submissions')
+          : _db.collection('submissions').where('year', isEqualTo: year);
+      final QuerySnapshot snap = await q.get();
       final Map<String, Map<String, dynamic>> byAirline = <String, Map<String, dynamic>>{};
       for (final DocumentSnapshot doc in snap.docs) {
         final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
@@ -530,7 +533,10 @@ class FirebaseService {
 
   static Future<List<Map<String, dynamic>>> getTopAirlinesBySubmission(int year) async {
     try {
-      final QuerySnapshot snap = await _db.collection('submissions').where('year', isEqualTo: year).get();
+      final Query<Map<String, dynamic>> q = year == 0
+          ? _db.collection('submissions')
+          : _db.collection('submissions').where('year', isEqualTo: year);
+      final QuerySnapshot snap = await q.get();
       final Map<String, int> byAirline = <String, int>{};
       for (final DocumentSnapshot doc in snap.docs) {
         final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;

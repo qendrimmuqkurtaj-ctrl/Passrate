@@ -32,119 +32,224 @@ class _SubmitAssessmentScreenState extends State<SubmitAssessmentScreen> {
           icon: const Icon(Icons.arrow_back, color: AppColors.accent),
           onPressed: () => Get.back(),
         ),
-        title: const Text('Submit Result', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 16)),
+        title: const Text(
+          'Submit Result',
+          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 16),
+        ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: GetBuilder<AssessmentController>(
-          builder: (AssessmentController c) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              const Text('Submit Result', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-              const SizedBox(height: 24),
+      body: GetBuilder<AssessmentController>(
+        builder: (AssessmentController c) => Column(
+          children: <Widget>[
+            // Fixed step progress header
+            _buildStepHeader(c),
 
-              // Airline dropdown
-              _FieldLabel('Airline Name'),
-              Obx(() {
-                if (c.loadingAirlines.value) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (c.loadingAirlinesError.value) {
-                  return _ErrorRetry(
-                    message: 'Could not load airlines.',
-                    onRetry: c.loadAirlines,
-                  );
-                }
-                return _buildAirlineDropdown(context, c);
-              }),
-              const SizedBox(height: 16),
+            // Scrollable form content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
 
-              // Date picker
-              _FieldLabel('Select Year and Month'),
-              _buildDatePicker(context, c),
-              const SizedBox(height: 16),
+                    // Airline dropdown
+                    _FieldLabel('Airline Name'),
+                    Obx(() {
+                      if (c.loadingAirlines.value) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (c.loadingAirlinesError.value) {
+                        return _ErrorRetry(
+                          message: 'Could not load airlines.',
+                          onRetry: c.loadAirlines,
+                        );
+                      }
+                      return _buildAirlineDropdown(context, c);
+                    }),
+                    const SizedBox(height: 16),
 
-              // Tasks (only show if airline selected)
-              Obx(() => c.selectedAirline.value != null
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      _FieldLabel('What was included in your assessment?'),
-                      if (c.loadingTasks.value)
-                        const Center(child: CircularProgressIndicator())
-                      else if (c.loadingTasksError.value)
-                        _ErrorRetry(
-                          message: 'Could not load tasks.',
-                          onRetry: c.loadTasks,
-                        )
-                      else if (c.tasks.isEmpty)
-                        const Text('No tasks available', style: TextStyle(color: AppColors.textMuted))
-                      else
-                        _buildTasksCheckboxes(c),
-                      const SizedBox(height: 16),
-                    ],
-                  )
-                : const SizedBox.shrink()),
+                    // Date picker
+                    _FieldLabel('Select Year and Month'),
+                    _buildDatePicker(context, c),
+                    const SizedBox(height: 16),
 
-              // Passed / Failed
-              Row(
-                children: <Widget>[
-                  Expanded(child: _PassFailButton(
-                    label: 'PASSED',
-                    icon: CupertinoIcons.check_mark_circled,
-                    color: AppColors.passText,
-                    borderColor: AppColors.passBorder,
-                    selectedBg: AppColors.passBg,
-                    selected: c.passed.value == true,
-                    onTap: () => c.setPassed(true),
-                  )),
-                  const SizedBox(width: 12),
-                  Expanded(child: _PassFailButton(
-                    label: 'FAILED',
-                    icon: CupertinoIcons.xmark_circle,
-                    color: AppColors.failText,
-                    borderColor: AppColors.failBorder,
-                    selectedBg: AppColors.failBg,
-                    selected: c.passed.value == false,
-                    onTap: () => c.setPassed(false),
-                  )),
-                ],
-              ),
-              const SizedBox(height: 24),
+                    // Tasks — only show if airline selected
+                    Obx(() => c.selectedAirline.value != null
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              _FieldLabel('What was included in your assessment?'),
+                              if (c.loadingTasks.value)
+                                const Center(child: CircularProgressIndicator())
+                              else if (c.loadingTasksError.value)
+                                _ErrorRetry(
+                                  message: 'Could not load tasks.',
+                                  onRetry: c.loadTasks,
+                                )
+                              else if (c.tasks.isEmpty)
+                                const Text('No tasks available',
+                                  style: TextStyle(color: AppColors.textMuted))
+                              else
+                                _buildTaskChips(c),
+                              const SizedBox(height: 16),
+                            ],
+                          )
+                        : const SizedBox.shrink()),
 
-              // Progress bar
-              Obx(() => _buildProgressBar(c)),
-              const SizedBox(height: 16),
-
-              // Submit button
-              Obx(() => c.allCompleted
-                ? SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: c.submitting.value ? null : () => _submit(c),
-                      child: c.submitting.value
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : const Text('Submit', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    // Passed / Failed
+                    Row(
+                      children: <Widget>[
+                        Expanded(child: _PassFailButton(
+                          label: 'PASSED',
+                          icon: CupertinoIcons.check_mark_circled,
+                          color: AppColors.passText,
+                          borderColor: AppColors.passBorder,
+                          selectedBg: AppColors.passBg,
+                          selected: c.passed.value == true,
+                          onTap: () => c.setPassed(true),
+                        )),
+                        const SizedBox(width: 12),
+                        Expanded(child: _PassFailButton(
+                          label: 'FAILED',
+                          icon: CupertinoIcons.xmark_circle,
+                          color: AppColors.failText,
+                          borderColor: AppColors.failBorder,
+                          selectedBg: AppColors.failBg,
+                          selected: c.passed.value == false,
+                          onTap: () => c.setPassed(false),
+                        )),
+                      ],
                     ),
-                  )
-                : const SizedBox.shrink()),
-              const SizedBox(height: 40),
-            ],
-          ),
+                    const SizedBox(height: 24),
+
+                    // Submit button — only when all steps complete
+                    Obx(() => c.allCompleted
+                        ? SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: c.submitting.value ? null : () => _submit(c),
+                              child: c.submitting.value
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Text('Submit',
+                                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                            ),
+                          )
+                        : const SizedBox.shrink()),
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
+
+  // ── Step progress header (fixed) ──────────────────────────────────────────
+
+  Widget _buildStepHeader(AssessmentController c) {
+    final List<bool> done = <bool>[
+      c.selectedAirline.value != null,
+      c.dateController.text.isNotEmpty,
+      c.selectedTaskIds.isNotEmpty,
+      c.passed.value != null,
+    ];
+    final List<String> labels = <String>['Airline', 'Date', 'Tasks', 'Result'];
+    final int doneCount = done.where((bool d) => d).length;
+
+    return Container(
+      color: AppColors.bgSecondary,
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+      child: Column(
+        children: <Widget>[
+          Row(
+            children: List<Widget>.generate(7, (int i) {
+              if (i.isOdd) {
+                final int leftIdx = i ~/ 2;
+                return Expanded(
+                  child: Container(
+                    height: 1.5,
+                    color: done[leftIdx] ? AppColors.accent : AppColors.border,
+                  ),
+                );
+              }
+              final int idx = i ~/ 2;
+              return Column(
+                children: <Widget>[
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: done[idx] ? AppColors.accent : AppColors.bgCard,
+                      border: Border.all(
+                        color: done[idx] ? AppColors.accent : AppColors.border,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Center(
+                      child: done[idx]
+                          ? const Icon(Icons.check, size: 14, color: Colors.white)
+                          : Text(
+                              '${idx + 1}',
+                              style: const TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    labels[idx],
+                    style: TextStyle(
+                      color: done[idx] ? AppColors.textSecondary : AppColors.textMuted,
+                      fontSize: 10,
+                      fontWeight: done[idx] ? FontWeight.w500 : FontWeight.normal,
+                    ),
+                  ),
+                ],
+              );
+            }),
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: doneCount / 4,
+              backgroundColor: AppColors.border,
+              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accent),
+              minHeight: 4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Airline dropdown ──────────────────────────────────────────────────────
 
   Widget _buildAirlineDropdown(BuildContext context, AssessmentController c) {
     return _AirlineSearchableDropdown(
       hint: 'Choose the Airline Name',
       value: c.selectedAirline.value,
       items: c.airlines,
-      onChanged: (Map<String, dynamic>? v) { if (v != null) c.selectAirline(v); },
+      onChanged: (Map<String, dynamic>? v) {
+        if (v != null) c.selectAirline(v);
+      },
     );
   }
+
+  // ── Date picker ───────────────────────────────────────────────────────────
 
   Widget _buildDatePicker(BuildContext context, AssessmentController c) {
     return GestureDetector(
@@ -152,15 +257,23 @@ class _SubmitAssessmentScreenState extends State<SubmitAssessmentScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         decoration: BoxDecoration(
-          color: AppColors.bgCard, borderRadius: BorderRadius.circular(8),
+          color: AppColors.bgCard,
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: AppColors.border),
         ),
         child: Row(
           children: <Widget>[
             Expanded(
               child: Text(
-                c.dateController.text.isEmpty ? 'Choose the year of assessment' : c.dateController.text,
-                style: TextStyle(color: c.dateController.text.isEmpty ? AppColors.textMuted : AppColors.textPrimary, fontSize: 14),
+                c.dateController.text.isEmpty
+                    ? 'Choose the year of assessment'
+                    : c.dateController.text,
+                style: TextStyle(
+                  color: c.dateController.text.isEmpty
+                      ? AppColors.textMuted
+                      : AppColors.textPrimary,
+                  fontSize: 14,
+                ),
               ),
             ),
             const Icon(CupertinoIcons.calendar, color: AppColors.accent, size: 20),
@@ -178,35 +291,57 @@ class _SubmitAssessmentScreenState extends State<SubmitAssessmentScreen> {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.bgCard,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (BuildContext ctx) => StatefulBuilder(
         builder: (BuildContext ctx2, StateSetter setState) => Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              const Text('Select Year and Month', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+              const Text(
+                'Select Year and Month',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              ),
               const SizedBox(height: 16),
-              // Year selector
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
                   const Text('Year:', style: TextStyle(fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
                   Row(
                     children: <Widget>[
-                      IconButton(icon: const Icon(CupertinoIcons.chevron_left, color: AppColors.textPrimary), onPressed: () => setState(() { if (selectedYear > 2024) selectedYear--; })),
-                      Text('$selectedYear', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                      IconButton(icon: const Icon(CupertinoIcons.chevron_right, color: AppColors.textPrimary), onPressed: () => setState(() { if (selectedYear < now.year) { selectedYear++; if (selectedYear == now.year && selectedMonth > now.month) selectedMonth = now.month; } })),
+                      IconButton(
+                        icon: const Icon(CupertinoIcons.chevron_left, color: AppColors.textPrimary),
+                        onPressed: () => setState(() { if (selectedYear > 2024) selectedYear--; }),
+                      ),
+                      Text('$selectedYear',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                      IconButton(
+                        icon: const Icon(CupertinoIcons.chevron_right, color: AppColors.textPrimary),
+                        onPressed: () => setState(() {
+                          if (selectedYear < now.year) {
+                            selectedYear++;
+                            if (selectedYear == now.year && selectedMonth > now.month) {
+                              selectedMonth = now.month;
+                            }
+                          }
+                        }),
+                      ),
                     ],
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              // Month grid
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, childAspectRatio: 2, crossAxisSpacing: 8, mainAxisSpacing: 8),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  childAspectRatio: 2,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                ),
                 itemCount: 12,
                 itemBuilder: (BuildContext context, int i) {
                   final int month = i + 1;
@@ -220,16 +355,18 @@ class _SubmitAssessmentScreenState extends State<SubmitAssessmentScreen> {
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: AppColors.border),
                       ),
-                      child: Center(child: Text(
-                        DateFormat('MMM').format(DateTime(2024, month)),
-                        style: TextStyle(
-                          color: isFuture
-                              ? AppColors.textMuted.withValues(alpha: 0.4)
-                              : (isSelected ? Colors.white : AppColors.textPrimary),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                      child: Center(
+                        child: Text(
+                          DateFormat('MMM').format(DateTime(2024, month)),
+                          style: TextStyle(
+                            color: isFuture
+                                ? AppColors.textMuted.withValues(alpha: 0.4)
+                                : (isSelected ? Colors.white : AppColors.textPrimary),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      )),
+                      ),
                     ),
                   );
                 },
@@ -252,135 +389,218 @@ class _SubmitAssessmentScreenState extends State<SubmitAssessmentScreen> {
     );
   }
 
-  Widget _buildTasksCheckboxes(AssessmentController c) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.bgCard, borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        children: c.tasks.map((Map<String, dynamic> task) {
-          final String id = task['id'] as String;
-          final String name = task['name'] as String;
-          return Obx(() => CheckboxListTile(
-            title: Text(name, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
-            value: c.selectedTaskIds.contains(id),
-            activeColor: AppColors.accent,
-            checkColor: Colors.white,
-            onChanged: (bool? _) => c.toggleTask(task),
-            controlAffinity: ListTileControlAffinity.leading,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-            dense: true,
-          ));
-        }).toList(),
-      ),
-    );
-  }
+  // ── Task chips ────────────────────────────────────────────────────────────
 
-  Widget _buildProgressBar(AssessmentController c) {
-    int steps = 0;
-    if (c.selectedAirline.value != null) steps++;
-    if (c.dateController.text.isNotEmpty) steps++;
-    if (c.selectedTaskIds.isNotEmpty) steps++;
-    if (c.passed.value != null) steps++;
-    final double progress = steps / 4;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      decoration: BoxDecoration(color: AppColors.bgCard, borderRadius: BorderRadius.circular(30)),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(30),
-              child: LinearProgressIndicator(
-                value: progress,
-                backgroundColor: AppColors.border,
-                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accent),
-                minHeight: 8,
+  Widget _buildTaskChips(AssessmentController c) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: c.tasks.map((Map<String, dynamic> task) {
+        final String id = task['id'] as String;
+        final String name = task['name'] as String;
+        final String label = name.isNotEmpty
+            ? '${name[0].toUpperCase()}${name.substring(1)}'
+            : name;
+        final bool selected = c.selectedTaskIds.contains(id);
+        return GestureDetector(
+          onTap: () => c.toggleTask(task),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(
+              color: selected
+                  ? AppColors.accent.withValues(alpha: 0.13)
+                  : AppColors.bgCard,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: selected ? AppColors.accent : AppColors.border,
+                width: selected ? 1.5 : 1.0,
               ),
             ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                if (selected) ...<Widget>[
+                  const Icon(Icons.check, size: 13, color: AppColors.accent),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: selected ? AppColors.accent : AppColors.textMuted,
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w500 : FontWeight.normal,
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(width: 12),
-          Icon(progress >= 1.0 ? CupertinoIcons.checkmark_alt_circle_fill : CupertinoIcons.airplane, color: AppColors.accent, size: 28),
-        ],
-      ),
+        );
+      }).toList(),
     );
   }
+
+  // ── Submit ────────────────────────────────────────────────────────────────
 
   Future<void> _submit(AssessmentController c) async {
     final Map<String, dynamic>? result = await c.submitAssessment();
     if (result != null) {
       Get.to(() => ConfirmScreen(result: result, controller: c));
     } else {
-      Get.snackbar('Error', 'Could not submit. Please try again.', snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar('Error', 'Could not submit. Please try again.',
+        snackPosition: SnackPosition.BOTTOM);
     }
   }
 }
+
+// ── Confirm screen ─────────────────────────────────────────────────────────────
 
 class ConfirmScreen extends StatelessWidget {
   final Map<String, dynamic> result;
   final AssessmentController controller;
   const ConfirmScreen({super.key, required this.result, required this.controller});
 
+  Color _rateColor(double rate) {
+    if (rate >= 80) return AppColors.passText;
+    if (rate >= 60) return const Color(0xFFE8A020);
+    return AppColors.failText;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final double successRate = result['successRate'] as double;
+    final int total = result['totalResponse'] as int;
+    final Color rateColor = _rateColor(successRate);
+
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       appBar: AppBar(
-        backgroundColor: AppColors.bgSecondary, elevation: 0,
-        leading: IconButton(icon: const Icon(Icons.arrow_back, color: AppColors.accent), onPressed: () => Get.back()),
-        title: const Text('Submit Result', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 16)),
+        backgroundColor: AppColors.bgSecondary,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.accent),
+          onPressed: () => Get.back(),
+        ),
+        title: const Text(
+          'Submit Result',
+          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 16),
+        ),
         centerTitle: true,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: <Widget>[
-            const SizedBox(height: 20),
-            const Icon(CupertinoIcons.check_mark_circled_solid, color: AppColors.green, size: 80),
-            const SizedBox(height: 16),
-            const Text('Thank you! Your result has been submitted.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
             const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.bgCard, borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(result['airlineName'] as String? ?? '', style: Theme.of(context).textTheme.titleMedium),
-                  Text(
-                    DateFormat('MMMM yyyy').format(DateTime(result['year'] as int, result['month'] as int)),
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
-                  const SizedBox(height: 16),
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: <Widget>[
-                    const Text('Total Responses', style: TextStyle(color: AppColors.textPrimary)),
-                    Text('${result['totalResponse']}', style: const TextStyle(color: AppColors.textPrimary)),
-                  ]),
-                  const SizedBox(height: 8),
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: <Widget>[
-                    const Text('Success Rate', style: TextStyle(color: AppColors.textPrimary)),
-                    Text('${(result['successRate'] as double).toStringAsFixed(1)}%', style: const TextStyle(color: AppColors.textPrimary)),
-                  ]),
-                ],
+            const Icon(CupertinoIcons.check_mark_circled_solid,
+              color: AppColors.green, size: 72),
+            const SizedBox(height: 14),
+            const Text(
+              'Result submitted!',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
               ),
             ),
+            const SizedBox(height: 6),
+            const Text(
+              'Thank you for helping the community.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+            ),
+            const SizedBox(height: 28),
+
+            // Stats card with accent left border
+            Container(
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: AppColors.bgCard,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Container(width: 3, color: AppColors.accent),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              result['airlineName'] as String? ?? '',
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Text(
+                              DateFormat('MMMM yyyy').format(
+                                DateTime(result['year'] as int, result['month'] as int),
+                              ),
+                              style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                            ),
+                            const SizedBox(height: 20),
+                            Center(
+                              child: Column(
+                                children: <Widget>[
+                                  Text(
+                                    '${successRate.toStringAsFixed(1)}%',
+                                    style: TextStyle(
+                                      color: rateColor,
+                                      fontSize: 52,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: -2,
+                                      height: 1,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  const Text(
+                                    'overall pass rate',
+                                    style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'from $total submission${total == 1 ? '' : 's'}',
+                                    style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
             const Spacer(),
-            Row(children: <Widget>[
-              Expanded(child: OutlinedButton(
-                onPressed: () { controller.reset(); Get.back(); },
-                child: const Text('Submit Another'),
-              )),
-              const SizedBox(width: 12),
-              Expanded(child: ElevatedButton(
-                onPressed: () { Get.offAll(() => const HomeScreen()); Get.to(() => const StatisticsScreen()); },
-                child: const Text('View Statistics'),
-              )),
-            ]),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () { controller.reset(); Get.back(); },
+                    child: const Text('Submit Another'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Get.offAll(() => const HomeScreen());
+                      Get.to(() => const StatisticsScreen());
+                    },
+                    child: const Text('View Statistics'),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 20),
           ],
         ),
@@ -388,6 +608,8 @@ class ConfirmScreen extends StatelessWidget {
     );
   }
 }
+
+// ── Shared helper widgets ──────────────────────────────────────────────────────
 
 class _ErrorRetry extends StatelessWidget {
   final String message;
@@ -407,7 +629,9 @@ class _ErrorRetry extends StatelessWidget {
         children: <Widget>[
           const Icon(Icons.wifi_off_outlined, color: AppColors.textMuted, size: 18),
           const SizedBox(width: 10),
-          Expanded(child: Text(message, style: const TextStyle(color: AppColors.textMuted, fontSize: 13))),
+          Expanded(
+            child: Text(message, style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
+          ),
           TextButton(
             onPressed: onRetry,
             child: const Text('Retry', style: TextStyle(color: AppColors.accent, fontSize: 13)),
@@ -499,7 +723,10 @@ class _AirlineSearchSheetState extends State<_AirlineSearchSheet> {
     setState(() {
       _visible = q.isEmpty
           ? widget.items
-          : widget.items.where((Map<String, dynamic> a) => (a['name'] as String).toLowerCase().contains(q)).toList();
+          : widget.items
+              .where((Map<String, dynamic> a) =>
+                  (a['name'] as String).toLowerCase().contains(q))
+              .toList();
     });
   }
 
@@ -530,7 +757,11 @@ class _AirlineSearchSheetState extends State<_AirlineSearchSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
               widget.hint,
-              style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 15),
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
             ),
           ),
           const SizedBox(height: 10),
@@ -571,7 +802,8 @@ class _AirlineSearchSheetState extends State<_AirlineSearchSheet> {
                 onTap: () => Navigator.of(ctx).pop(_visible[i]),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
-                  child: Text(_visible[i]['name'] as String, style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+                  child: Text(_visible[i]['name'] as String,
+                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
                 ),
               ),
             ),
@@ -586,10 +818,18 @@ class _AirlineSearchSheetState extends State<_AirlineSearchSheet> {
 class _FieldLabel extends StatelessWidget {
   final String text;
   const _FieldLabel(this.text);
+
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
-    child: Text(text, style: const TextStyle(color: AppColors.textMuted, fontSize: 13, fontWeight: FontWeight.w500)),
+    child: Text(
+      text,
+      style: const TextStyle(
+        color: AppColors.textMuted,
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
   );
 }
 
@@ -602,9 +842,13 @@ class _PassFailButton extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   const _PassFailButton({
-    required this.label, required this.icon, required this.color,
-    required this.borderColor, required this.selectedBg,
-    required this.selected, required this.onTap,
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.borderColor,
+    required this.selectedBg,
+    required this.selected,
+    required this.onTap,
   });
 
   @override
@@ -618,11 +862,15 @@ class _PassFailButton extends StatelessWidget {
           border: Border.all(color: borderColor, width: 1.5),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
-          Icon(icon, color: color, size: 24),
-          const SizedBox(width: 8),
-          Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 14)),
-        ]),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Icon(icon, color: color, size: 24),
+            const SizedBox(width: 8),
+            Text(label,
+              style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 14)),
+          ],
+        ),
       ),
     );
   }
