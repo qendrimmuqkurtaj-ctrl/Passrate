@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -13,7 +14,6 @@ const List<String> kAircraftTypes = <String>[
   'Q400', 'CRJ-900', 'ATR-42', 'ATR-72',
 ];
 
-
 class SubmitSalaryController extends GetxController {
   final RxBool loadingAirlines = true.obs;
   final RxBool loadingCountries = true.obs;
@@ -24,9 +24,7 @@ class SubmitSalaryController extends GetxController {
   String? existingDocId;
 
   final RxList<String> aircraftTypeOptions = <String>[].obs;
-
   final RxMap<String, List<String>> countries = <String, List<String>>{}.obs;
-
   final RxList<Map<String, dynamic>> airlines = <Map<String, dynamic>>[].obs;
   final Rx<Map<String, dynamic>?> selectedAirline = Rx<Map<String, dynamic>?>(null);
   final RxString selectedRank = ''.obs;
@@ -57,6 +55,23 @@ class SubmitSalaryController extends GetxController {
       selectedCountry.value.isNotEmpty &&
       _baseCompleted &&
       selectedCurrency.value.isNotEmpty;
+
+  // Step completion for the progress header
+  bool get step1Done =>
+      selectedAirline.value != null &&
+      selectedRank.value.isNotEmpty &&
+      seniorityController.text.isNotEmpty &&
+      selectedAircraftType.value.isNotEmpty;
+
+  bool get step2Done =>
+      selectedContractType.value.isNotEmpty &&
+      selectedCountry.value.isNotEmpty &&
+      _baseCompleted;
+
+  bool get step3Done =>
+      selectedCurrency.value.isNotEmpty &&
+      baseSalaryController.text.isNotEmpty &&
+      perDiemController.text.isNotEmpty;
 
   void selectCountry(String? country) {
     selectedCountry.value = country ?? '';
@@ -149,9 +164,12 @@ class SubmitSalaryController extends GetxController {
   }
 }
 
+// ── Submit salary screen ───────────────────────────────────────────────────────
+
 class SubmitSalaryScreen extends StatefulWidget {
   final String? existingDocId;
-  const SubmitSalaryScreen({super.key, this.existingDocId});
+  final VoidCallback? onDone;
+  const SubmitSalaryScreen({super.key, this.existingDocId, this.onDone});
 
   @override
   State<SubmitSalaryScreen> createState() => _SubmitSalaryScreenState();
@@ -185,186 +203,275 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      body: GetBuilder<SubmitSalaryController>(
+        builder: (SubmitSalaryController ctrl) => Column(
           children: <Widget>[
-            Text(
-              title,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-            ),
-            const SizedBox(height: 24),
+            _buildStepHeader(ctrl),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
 
-            // Airline
-            const _FieldLabel('Airline'),
-            Obx(() {
-              if (c.loadingAirlines.value) {
-                return const Center(child: CircularProgressIndicator(color: AppColors.accent));
-              }
-              if (c.loadingAirlinesError.value) {
-                return _ErrorRetry(
-                  message: 'Could not load airlines.',
-                  onRetry: c.fetchAirlines,
-                );
-              }
-              return _AirlineSearchableDropdown(
-                hint: 'Select Airline',
-                value: c.selectedAirline.value,
-                items: c.airlines,
-                onChanged: (Map<String, dynamic>? v) { c.selectedAirline.value = v; },
-              );
-            }),
-            const SizedBox(height: 16),
+                    // ── POSITION ─────────────────────────────────────────────
 
-            // Rank
-            const _FieldLabel('Rank'),
-            Obx(() => _Dropdown<String>(
-              hint: 'Select Rank',
-              value: c.selectedRank.value.isEmpty ? null : c.selectedRank.value,
-              items: <String>['SO', 'FO', 'Captain'].map((String r) => DropdownMenuItem<String>(
-                value: r,
-                child: Text(r, style: const TextStyle(color: AppColors.textPrimary)),
-              )).toList(),
-              onChanged: (String? v) { if (v != null) c.selectedRank.value = v; },
-            )),
-            const SizedBox(height: 16),
+                    // Airline
+                    const _FieldLabel('Airline'),
+                    Obx(() {
+                      if (c.loadingAirlines.value) {
+                        return const Center(child: CircularProgressIndicator(color: AppColors.accent));
+                      }
+                      if (c.loadingAirlinesError.value) {
+                        return _ErrorRetry(message: 'Could not load airlines.', onRetry: c.fetchAirlines);
+                      }
+                      return _AirlineSearchableDropdown(
+                        hint: 'Select Airline',
+                        value: c.selectedAirline.value,
+                        items: c.airlines,
+                        onChanged: (Map<String, dynamic>? v) {
+                          c.selectedAirline.value = v;
+                          c.update();
+                        },
+                      );
+                    }),
+                    const SizedBox(height: 16),
 
-            // Seniority
-            const _FieldLabel('Seniority (years)'),
-            _NumberField(
-              controller: c.seniorityController,
-              hint: 'Enter years of seniority',
-              onChanged: (_) => c.update(),
-            ),
-            const SizedBox(height: 16),
+                    // Rank
+                    const _FieldLabel('Rank'),
+                    Obx(() => _OptionDrop(
+                      hint: 'Select Rank',
+                      value: c.selectedRank.value.isEmpty ? null : c.selectedRank.value,
+                      options: const <String>['SO', 'FO', 'Captain'],
+                      onChanged: (String? v) {
+                        if (v != null) { c.selectedRank.value = v; c.update(); }
+                      },
+                    )),
+                    const SizedBox(height: 16),
 
-            // Aircraft type
-            const _FieldLabel('Aircraft Type'),
-            Obx(() {
-              if (c.loadingAircraftTypes.value) {
-                return const Center(child: CircularProgressIndicator(color: AppColors.accent));
-              }
-              return _SearchableDropdown(
-                hint: 'Select Aircraft Type',
-                value: c.selectedAircraftType.value.isEmpty ? null : c.selectedAircraftType.value,
-                items: c.aircraftTypeOptions,
-                onChanged: (String? v) { if (v != null) c.selectedAircraftType.value = v; },
-              );
-            }),
-            const SizedBox(height: 16),
+                    // Seniority
+                    const _FieldLabel('Seniority (years)'),
+                    _NumberField(
+                      controller: c.seniorityController,
+                      hint: 'Enter years of seniority',
+                      onChanged: (_) => c.update(),
+                    ),
+                    const SizedBox(height: 16),
 
-            // Contract type
-            const _FieldLabel('Contract Type'),
-            Obx(() => _Dropdown<String>(
-              hint: 'Select Contract Type',
-              value: c.selectedContractType.value.isEmpty ? null : c.selectedContractType.value,
-              items: <String>['Permanent', 'Contractor'].map((String ct) => DropdownMenuItem<String>(
-                value: ct,
-                child: Text(ct, style: const TextStyle(color: AppColors.textPrimary)),
-              )).toList(),
-              onChanged: (String? v) { if (v != null) c.selectedContractType.value = v; },
-            )),
-            const SizedBox(height: 16),
+                    // Aircraft type
+                    const _FieldLabel('Aircraft Type'),
+                    Obx(() {
+                      if (c.loadingAircraftTypes.value) {
+                        return const Center(child: CircularProgressIndicator(color: AppColors.accent));
+                      }
+                      return _SearchableDropdown(
+                        hint: 'Select Aircraft Type',
+                        value: c.selectedAircraftType.value.isEmpty ? null : c.selectedAircraftType.value,
+                        items: c.aircraftTypeOptions,
+                        onChanged: (String? v) {
+                          if (v != null) { c.selectedAircraftType.value = v; c.update(); }
+                        },
+                      );
+                    }),
+                    const SizedBox(height: 24),
 
-            // Currency
-            const _FieldLabel('Currency'),
-            Obx(() => _Dropdown<String>(
-              hint: 'Select Currency',
-              value: c.selectedCurrency.value.isEmpty ? null : c.selectedCurrency.value,
-              items: <String>['NOK', 'EUR', 'GBP', 'USD', 'SEK', 'DKK'].map((String cur) => DropdownMenuItem<String>(
-                value: cur,
-                child: Text(cur, style: const TextStyle(color: AppColors.textPrimary)),
-              )).toList(),
-              onChanged: (String? v) { if (v != null) c.selectedCurrency.value = v; },
-            )),
-            const SizedBox(height: 16),
+                    // ── CONTRACT ──────────────────────────────────────────────
 
-            // Base salary
-            const _FieldLabel('Base Salary'),
-            _NumberField(
-              controller: c.baseSalaryController,
-              hint: 'Enter base salary',
-              decimal: true,
-              onChanged: (_) => c.update(),
-            ),
-            const SizedBox(height: 16),
+                    // Contract type
+                    const _FieldLabel('Contract Type'),
+                    Obx(() => _OptionDrop(
+                      hint: 'Select Contract Type',
+                      value: c.selectedContractType.value.isEmpty ? null : c.selectedContractType.value,
+                      options: const <String>['Permanent', 'Contractor'],
+                      onChanged: (String? v) {
+                        if (v != null) { c.selectedContractType.value = v; c.update(); }
+                      },
+                    )),
+                    const SizedBox(height: 16),
 
-            // Per diem
-            const _FieldLabel('Per Diem'),
-            _NumberField(
-              controller: c.perDiemController,
-              hint: 'Enter per diem',
-              decimal: true,
-              onChanged: (_) => c.update(),
-            ),
-            const SizedBox(height: 16),
+                    // Country
+                    const _FieldLabel('Country'),
+                    Obx(() {
+                      if (c.loadingCountries.value && c.countries.isEmpty) {
+                        return const Center(child: CircularProgressIndicator(color: AppColors.accent));
+                      }
+                      if (c.loadingCountriesError.value && c.countries.isEmpty) {
+                        return _ErrorRetry(message: 'Could not load countries.', onRetry: c.fetchCountries);
+                      }
+                      final List<String> countryList = c.countries.keys.toList()..sort();
+                      return _SearchableDropdown(
+                        hint: 'Select Country',
+                        value: c.selectedCountry.value.isEmpty ? null : c.selectedCountry.value,
+                        items: <String>[...countryList, 'Other'],
+                        onChanged: (String? v) => c.selectCountry(v),
+                      );
+                    }),
+                    const SizedBox(height: 16),
 
-            // Country
-            const _FieldLabel('Country'),
-            Obx(() {
-              if (c.loadingCountries.value && c.countries.isEmpty) {
-                return const Center(child: CircularProgressIndicator(color: AppColors.accent));
-              }
-              if (c.loadingCountriesError.value && c.countries.isEmpty) {
-                return _ErrorRetry(
-                  message: 'Could not load countries.',
-                  onRetry: c.fetchCountries,
-                );
-              }
-              final List<String> countryList = c.countries.keys.toList()..sort();
-              return _SearchableDropdown(
-                hint: 'Select Country',
-                value: c.selectedCountry.value.isEmpty ? null : c.selectedCountry.value,
-                items: <String>[...countryList, 'Other'],
-                onChanged: (String? v) => c.selectCountry(v),
-              );
-            }),
-            const SizedBox(height: 16),
+                    // Base / City
+                    const _FieldLabel('Base/City'),
+                    Obx(() {
+                      final String country = c.selectedCountry.value;
+                      final List<String>? cities = c.countries[country];
+                      if (country.isEmpty) {
+                        return _SearchableDropdown(
+                          hint: 'Select base or city',
+                          value: null,
+                          items: const <String>[],
+                          onChanged: (_) {},
+                        );
+                      }
+                      if (cities != null) {
+                        return _SearchableDropdown(
+                          hint: 'Select base or city',
+                          value: c.selectedBase.value.isEmpty ? null : c.selectedBase.value,
+                          items: cities,
+                          onChanged: (String? v) {
+                            c.selectedBase.value = v ?? '';
+                            c.update();
+                          },
+                        );
+                      }
+                      return _TextField(
+                        controller: c.baseController,
+                        hint: 'Enter base or city',
+                        onChanged: (_) => c.update(),
+                      );
+                    }),
+                    const SizedBox(height: 24),
 
-            // Base / City — dropdown for known countries, free text for Other
-            const _FieldLabel('Base/City'),
-            Obx(() {
-              final String country = c.selectedCountry.value;
-              final List<String>? cities = c.countries[country];
-              if (country.isEmpty) {
-                return _SearchableDropdown(
-                  hint: 'Select base or city',
-                  value: null,
-                  items: const <String>[],
-                  onChanged: (_) {},
-                );
-              }
-              if (cities != null) {
-                return _SearchableDropdown(
-                  hint: 'Select base or city',
-                  value: c.selectedBase.value.isEmpty ? null : c.selectedBase.value,
-                  items: cities,
-                  onChanged: (String? v) { c.selectedBase.value = v ?? ''; },
-                );
-              }
-              // Other — free text
-              return _TextField(
-                controller: c.baseController,
-                hint: 'Enter base or city',
-                onChanged: (_) => c.update(),
-              );
-            }),
-            const SizedBox(height: 32),
+                    // ── COMPENSATION ──────────────────────────────────────────
 
-            // Submit button
-            Obx(() => SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: c.submitting.value ? null : () => _submit(c, title),
-                child: c.submitting.value
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    // Currency
+                    const _FieldLabel('Currency'),
+                    Obx(() => _OptionDrop(
+                      hint: 'Select Currency',
+                      value: c.selectedCurrency.value.isEmpty ? null : c.selectedCurrency.value,
+                      options: const <String>['NOK', 'EUR', 'GBP', 'USD', 'SEK', 'DKK'],
+                      onChanged: (String? v) {
+                        if (v != null) { c.selectedCurrency.value = v; c.update(); }
+                      },
+                    )),
+                    const SizedBox(height: 16),
+
+                    // Base salary
+                    const _FieldLabel('Base Salary'),
+                    _NumberField(
+                      controller: c.baseSalaryController,
+                      hint: 'Enter base salary',
+                      decimal: true,
+                      onChanged: (_) => c.update(),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Per diem
+                    const _FieldLabel('Per Diem'),
+                    _NumberField(
+                      controller: c.perDiemController,
+                      hint: 'Enter per diem',
+                      decimal: true,
+                      onChanged: (_) => c.update(),
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Submit button
+                    Obx(() => SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: c.submitting.value ? null : () => _submit(c, title),
+                        child: c.submitting.value
+                            ? const SizedBox(
+                                width: 20, height: 20,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      ),
+                    )),
+                    const SizedBox(height: 40),
+                  ],
+                ),
               ),
-            )),
-            const SizedBox(height: 40),
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ── Step progress header ──────────────────────────────────────────────────
+
+  Widget _buildStepHeader(SubmitSalaryController c) {
+    final List<bool> done = <bool>[c.step1Done, c.step2Done, c.step3Done];
+    const List<String> labels = <String>['Position', 'Contract', 'Pay'];
+    final int doneCount = done.where((bool d) => d).length;
+
+    return Container(
+      color: AppColors.bgSecondary,
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+      child: Column(
+        children: <Widget>[
+          Row(
+            children: List<Widget>.generate(5, (int i) {
+              if (i.isOdd) {
+                final int leftIdx = i ~/ 2;
+                return Expanded(
+                  child: Container(
+                    height: 1.5,
+                    color: done[leftIdx] ? AppColors.accent : AppColors.border,
+                  ),
+                );
+              }
+              final int idx = i ~/ 2;
+              return Column(
+                children: <Widget>[
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: done[idx] ? AppColors.accent : AppColors.bgCard,
+                      border: Border.all(
+                        color: done[idx] ? AppColors.accent : AppColors.border,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Center(
+                      child: done[idx]
+                          ? const Icon(Icons.check, size: 14, color: Colors.white)
+                          : Text(
+                              '${idx + 1}',
+                              style: const TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    labels[idx],
+                    style: TextStyle(
+                      color: done[idx] ? AppColors.textSecondary : AppColors.textMuted,
+                      fontSize: 10,
+                      fontWeight: done[idx] ? FontWeight.w500 : FontWeight.normal,
+                    ),
+                  ),
+                ],
+              );
+            }),
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: doneCount / 3,
+              backgroundColor: AppColors.border,
+              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accent),
+              minHeight: 4,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -382,7 +489,25 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
     }
     final bool ok = await c.submit();
     if (ok) {
-      Get.back();
+      final Map<String, dynamic> submitted = <String, dynamic>{
+        'airlineName': c.selectedAirline.value!['name'] as String,
+        'rank': c.selectedRank.value,
+        'aircraftType': c.selectedAircraftType.value,
+        'contractType': c.selectedContractType.value,
+        'country': c.selectedCountry.value,
+        'base': c.selectedCountry.value == 'Other'
+            ? c.baseController.text.trim()
+            : c.selectedBase.value,
+        'currency': c.selectedCurrency.value,
+        'baseSalary': double.tryParse(c.baseSalaryController.text) ?? 0.0,
+        'perDiem': double.tryParse(c.perDiemController.text) ?? 0.0,
+        'seniority': int.tryParse(c.seniorityController.text) ?? 0,
+        'isUpdate': widget.existingDocId != null,
+      };
+      await Get.off<void>(() => SubmitSalaryConfirmScreen(
+        data: submitted,
+        onDone: widget.onDone,
+      ));
     } else {
       Get.snackbar(
         'Error',
@@ -394,6 +519,183 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
     }
   }
 }
+
+// ── Confirmation screen ────────────────────────────────────────────────────────
+
+class SubmitSalaryConfirmScreen extends StatelessWidget {
+  final Map<String, dynamic> data;
+  final VoidCallback? onDone;
+  const SubmitSalaryConfirmScreen({super.key, required this.data, this.onDone});
+
+  @override
+  Widget build(BuildContext context) {
+    final String airlineName = data['airlineName'] as String;
+    final String rank = data['rank'] as String;
+    final String aircraft = data['aircraftType'] as String;
+    final String contract = data['contractType'] as String;
+    final String country = data['country'] as String;
+    final String base = data['base'] as String;
+    final String currency = data['currency'] as String;
+    final double baseSalary = data['baseSalary'] as double;
+    final double perDiem = data['perDiem'] as double;
+    final int seniority = data['seniority'] as int;
+    final bool isUpdate = data['isUpdate'] as bool;
+
+    return Scaffold(
+      backgroundColor: AppColors.bgPrimary,
+      appBar: AppBar(
+        backgroundColor: AppColors.bgSecondary,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        title: Text(
+          isUpdate ? 'Update Salary' : 'Submit Salary',
+          style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 16),
+        ),
+        centerTitle: true,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: <Widget>[
+            const SizedBox(height: 24),
+            const Icon(CupertinoIcons.check_mark_circled_solid, color: AppColors.green, size: 72),
+            const SizedBox(height: 14),
+            Text(
+              isUpdate ? 'Salary updated!' : 'Salary submitted!',
+              style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 20),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Thank you for contributing to the community.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+            ),
+            const SizedBox(height: 28),
+
+            // Summary card with accent left border
+            Container(
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: AppColors.bgCard,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Container(width: 3, color: AppColors.accent),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              airlineName,
+                              style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                            Text(
+                              '$rank · $aircraft · $seniority yr',
+                              style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                            ),
+                            const SizedBox(height: 20),
+                            Center(
+                              child: Column(
+                                children: <Widget>[
+                                  Text(
+                                    '${_fmt(baseSalary)} $currency',
+                                    style: const TextStyle(
+                                      color: AppColors.accent,
+                                      fontSize: 44,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: -1,
+                                      height: 1,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  const Text(
+                                    'Base Salary',
+                                    style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.accent.withValues(alpha: 0.10),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
+                                    ),
+                                    child: Text(
+                                      'Per Diem  ${_fmt(perDiem)} $currency',
+                                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            const Divider(color: AppColors.border, height: 1),
+                            const SizedBox(height: 12),
+                            _InfoRow('Contract', contract),
+                            _InfoRow('Country', country),
+                            _InfoRow('Base/City', base),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const Spacer(),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  onDone?.call();
+                  Get.back();
+                },
+                child: const Text('Done', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _fmt(double v) => v.truncate().toString().replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
+    (Match m) => ',',
+  );
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _InfoRow(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 4),
+    child: Row(
+      children: <Widget>[
+        SizedBox(
+          width: 70,
+          child: Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+        ),
+        Expanded(
+          child: Text(value, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+        ),
+      ],
+    ),
+  );
+}
+
+// ── Shared helper widgets ──────────────────────────────────────────────────────
 
 class _ErrorRetry extends StatelessWidget {
   final String message;
@@ -424,40 +726,60 @@ class _ErrorRetry extends StatelessWidget {
   }
 }
 
-class _Dropdown<T> extends StatelessWidget {
+// Bottom-sheet option picker — replaces native DropdownButton everywhere
+class _OptionDrop extends StatelessWidget {
   final String hint;
-  final T? value;
-  final List<DropdownMenuItem<T>> items;
-  final ValueChanged<T?> onChanged;
+  final String? value;
+  final List<String> options;
+  final ValueChanged<String?> onChanged;
 
-  const _Dropdown({
+  const _OptionDrop({
     required this.hint,
     required this.value,
-    required this.items,
+    required this.options,
     required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<T>(
-          isExpanded: true,
-          hint: Text(hint, style: const TextStyle(color: AppColors.textMuted, fontSize: 14)),
-          value: value,
-          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.accent),
-          dropdownColor: AppColors.bgCard,
-          items: items,
-          onChanged: onChanged,
+    return GestureDetector(
+      onTap: () => _open(context),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.bgCard,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: value != null ? AppColors.accent : AppColors.border),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                value ?? hint,
+                style: TextStyle(
+                  color: value != null ? AppColors.textPrimary : AppColors.textMuted,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            const Icon(Icons.keyboard_arrow_down, color: AppColors.accent),
+          ],
         ),
       ),
     );
+  }
+
+  Future<void> _open(BuildContext context) async {
+    final String? picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.bgCard,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _SearchSheet(hint: hint, items: options),
+    );
+    if (picked != null) onChanged(picked);
   }
 }
 
@@ -476,11 +798,12 @@ class _NumberField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool filled = controller.text.isNotEmpty;
     return Container(
       decoration: BoxDecoration(
         color: AppColors.bgCard,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: filled ? AppColors.accent : AppColors.border),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: TextField(
@@ -518,11 +841,12 @@ class _TextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool filled = controller.text.isNotEmpty;
     return Container(
       decoration: BoxDecoration(
         color: AppColors.bgCard,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: filled ? AppColors.accent : AppColors.border),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: TextField(
@@ -560,7 +884,7 @@ class _SearchableDropdown extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.bgCard,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: value != null ? AppColors.accent : AppColors.border),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         child: Row(
@@ -641,10 +965,7 @@ class _SearchSheetState extends State<_SearchSheet> {
           Container(
             width: 40,
             height: 4,
-            decoration: BoxDecoration(
-              color: AppColors.border,
-              borderRadius: BorderRadius.circular(2),
-            ),
+            decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
           ),
           const SizedBox(height: 12),
           Padding(
@@ -725,7 +1046,7 @@ class _AirlineSearchableDropdown extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.bgCard,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: value != null ? AppColors.accent : AppColors.border),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         child: Row(
@@ -785,7 +1106,9 @@ class _AirlineSearchSheetState extends State<_AirlineSearchSheet> {
     setState(() {
       _visible = q.isEmpty
           ? widget.items
-          : widget.items.where((Map<String, dynamic> a) => (a['name'] as String).toLowerCase().contains(q)).toList();
+          : widget.items
+              .where((Map<String, dynamic> a) => (a['name'] as String).toLowerCase().contains(q))
+              .toList();
     });
   }
 
@@ -806,10 +1129,7 @@ class _AirlineSearchSheetState extends State<_AirlineSearchSheet> {
           Container(
             width: 40,
             height: 4,
-            decoration: BoxDecoration(
-              color: AppColors.border,
-              borderRadius: BorderRadius.circular(2),
-            ),
+            decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
           ),
           const SizedBox(height: 12),
           Padding(
@@ -857,7 +1177,8 @@ class _AirlineSearchSheetState extends State<_AirlineSearchSheet> {
                 onTap: () => Navigator.of(ctx).pop(_visible[i]),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
-                  child: Text(_visible[i]['name'] as String, style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+                  child: Text(_visible[i]['name'] as String,
+                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
                 ),
               ),
             ),
@@ -876,6 +1197,9 @@ class _FieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
-    child: Text(text, style: const TextStyle(color: AppColors.textMuted, fontSize: 13, fontWeight: FontWeight.w500)),
+    child: Text(
+      text,
+      style: const TextStyle(color: AppColors.textMuted, fontSize: 13, fontWeight: FontWeight.w500),
+    ),
   );
 }

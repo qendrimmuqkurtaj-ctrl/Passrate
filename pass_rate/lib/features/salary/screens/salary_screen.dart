@@ -57,11 +57,34 @@ class SalaryController extends GetxController {
       final String sel = filterSeniority.value;
       list = list.where((Map<String, dynamic> s) {
         final int seniority = (s['seniorityYears'] as num?)?.toInt() ?? 0;
-        if (sel == '10+') return seniority >= 10;
-        return seniority == (int.tryParse(sel) ?? -1);
+        if (sel == '<3y') return seniority < 3;
+        if (sel == '3-6y') return seniority >= 3 && seniority <= 6;
+        if (sel == '7-10y') return seniority >= 7 && seniority <= 10;
+        if (sel == '10+y') return seniority > 10;
+        return true;
       }).toList();
     }
     return list;
+  }
+
+  int get activeFilterCount {
+    int count = 0;
+    if (searchQuery.value.isNotEmpty) count++;
+    if (filterRank.value.isNotEmpty) count++;
+    if (filterCountry.value.isNotEmpty) count++;
+    if (filterBase.value.isNotEmpty) count++;
+    if (filterAircraftType.value.isNotEmpty) count++;
+    if (filterSeniority.value.isNotEmpty) count++;
+    return count;
+  }
+
+  void clearAllFilters() {
+    searchQuery.value = '';
+    filterRank.value = '';
+    filterCountry.value = '';
+    filterBase.value = '';
+    filterAircraftType.value = '';
+    filterSeniority.value = '';
   }
 
   // Top 3 highest-paid submissions matching user's rank and aircraft type.
@@ -279,33 +302,52 @@ class SalaryController extends GetxController {
 
   void _showSoftReminder() {
     Get.dialog<void>(
-      AlertDialog(
+      Dialog(
         backgroundColor: AppColors.bgCard,
-        title: const Text(
-          'Is your salary still current?',
-          style: TextStyle(color: AppColors.textPrimary),
-        ),
-        content: const Text(
-          'Your salary submission is over 12 months old. Is it still accurate?',
-          style: TextStyle(color: AppColors.textMuted),
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () async {
-              Get.back();
-              await confirmStillValid();
-            },
-            child: const Text('Yes, still valid', style: TextStyle(color: AppColors.accent)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border, width: 2),
           ),
-          TextButton(
-            onPressed: () async {
-              Get.back();
-              await Get.to(() => SubmitSalaryScreen(existingDocId: existingDocId));
-              reload();
-            },
-            child: const Text('No, update it', style: TextStyle(color: AppColors.textMuted)),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Text(
+                'Is your salary still current?',
+                style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 16),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Your salary submission is over 12 months old. Is it still accurate?',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: <Widget>[
+                  TextButton(
+                    onPressed: () async {
+                      Get.back();
+                      await Get.to(() => SubmitSalaryScreen(existingDocId: existingDocId, onDone: reload));
+                    },
+                    child: const Text('No, update it', style: TextStyle(color: AppColors.textMuted)),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () async {
+                      Get.back();
+                      await confirmStillValid();
+                    },
+                    child: const Text('Yes, still valid', style: TextStyle(color: AppColors.accent)),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
       barrierDismissible: false,
     );
@@ -511,8 +553,7 @@ class _SalaryScreenState extends State<SalaryScreen> {
                     ),
                   );
                   if (confirmed == true) {
-                    await Get.to(() => SubmitSalaryScreen(existingDocId: c.existingDocId));
-                    c.reload();
+                    Get.to(() => SubmitSalaryScreen(existingDocId: c.existingDocId, onDone: c.reload));
                   }
                 },
                 child: const Text(
@@ -608,12 +649,18 @@ class _SalaryScreenState extends State<SalaryScreen> {
                 child: Text('No salary data available yet.', style: TextStyle(color: AppColors.textMuted)),
               );
             }
+            final double globalMax = groups
+                .where((Map<String, dynamic> g) => g['hasData'] as bool? ?? false)
+                .fold(0.0, (double prev, Map<String, dynamic> g) {
+                  final double v = g['maxEur'] as double? ?? 0;
+                  return v > prev ? v : prev;
+                });
             return ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: groups.length,
               itemBuilder: (BuildContext ctx, int i) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: _LimitedGroupCard(group: groups[i]),
+                child: _LimitedGroupCard(group: groups[i], globalMaxEur: globalMax),
               ),
             );
           }),
@@ -623,9 +670,8 @@ class _SalaryScreenState extends State<SalaryScreen> {
           child: SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () async {
-                await Get.to(() => SubmitSalaryScreen(existingDocId: c.existingDocId));
-                c.reload();
+              onPressed: () {
+                Get.to(() => SubmitSalaryScreen(existingDocId: c.existingDocId, onDone: c.reload));
               },
               child: const Text(
                 'Submit Salary for Full Access',
@@ -701,9 +747,19 @@ class _SalaryScreenState extends State<SalaryScreen> {
 
                 const SizedBox(height: 20),
 
-                Text(
-                  'Best paid countries for ${c.myRank} pilots (based on submitted salaries)',
-                  style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        'Top countries for ${c.myRank}s',
+                        style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
+                    ),
+                    Tooltip(
+                      message: 'Based on highest single salary submitted per country for your rank',
+                      child: const Icon(Icons.info_outline, color: AppColors.textMuted, size: 16),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 if (bestCountries.isEmpty)
@@ -715,7 +771,41 @@ class _SalaryScreenState extends State<SalaryScreen> {
                 const Divider(color: AppColors.border, height: 1),
                 const SizedBox(height: 16),
 
+                // ── Active filter indicator ──────────────────────────────
+                if (c.activeFilterCount > 0) ...<Widget>[
+                  Row(
+                    children: <Widget>[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: AppColors.accent.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          '${c.activeFilterCount} filter${c.activeFilterCount == 1 ? '' : 's'} active',
+                          style: const TextStyle(color: AppColors.accent, fontSize: 12, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      GestureDetector(
+                        onTap: c.clearAllFilters,
+                        child: const Text(
+                          'Clear all',
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                ],
+
                 // ── Results count ────────────────────────────────────────
+                Container(height: 1.5, color: AppColors.accent.withValues(alpha: 0.4)),
+                const SizedBox(height: 10),
                 Text(
                   '${results.length} result${results.length == 1 ? '' : 's'}',
                   style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
@@ -747,9 +837,8 @@ class _SalaryScreenState extends State<SalaryScreen> {
             children: <Widget>[
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () async {
-                    await Get.to(() => SubmitSalaryScreen(existingDocId: c.existingDocId));
-                    c.reload();
+                  onPressed: () {
+                    Get.to(() => SubmitSalaryScreen(existingDocId: c.existingDocId, onDone: c.reload));
                   },
                   child: const Text('Update Salary', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                 ),
@@ -757,8 +846,8 @@ class _SalaryScreenState extends State<SalaryScreen> {
               const SizedBox(width: 10),
               OutlinedButton(
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red,
-                  side: const BorderSide(color: Colors.red),
+                  foregroundColor: AppColors.failText,
+                  side: const BorderSide(color: AppColors.failText),
                 ),
                 onPressed: () => _confirmDelete(c),
                 child: const Text('Delete', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
@@ -785,7 +874,7 @@ class _SalaryScreenState extends State<SalaryScreen> {
         Row(
           children: <Widget>[
             Expanded(
-              child: Obx(() => _FilterDrop(
+              child: Obx(() => _SearchableFilterDrop(
                 hint: 'Rank',
                 value: c.filterRank.value.isEmpty ? null : c.filterRank.value,
                 options: const <String>['SO', 'FO', 'Captain'],
@@ -826,12 +915,42 @@ class _SalaryScreenState extends State<SalaryScreen> {
           ],
         ),
         const SizedBox(height: 8),
-        Obx(() => _FilterDrop(
-          hint: 'Seniority',
-          value: c.filterSeniority.value.isEmpty ? null : c.filterSeniority.value,
-          options: const <String>['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '10+'],
-          onChanged: (String? v) => c.filterSeniority.value = v ?? '',
-        )),
+        Obx(() {
+          const List<String> chips = <String>['<3y', '3-6y', '7-10y', '10+y'];
+          return Row(
+            children: chips.map((String chip) {
+              final bool selected = c.filterSeniority.value == chip;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: GestureDetector(
+                  onTap: () => c.filterSeniority.value = selected ? '' : chip,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? AppColors.accent.withValues(alpha: 0.15)
+                          : AppColors.bgCard,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: selected ? AppColors.accent : AppColors.border,
+                        width: selected ? 1.5 : 1.0,
+                      ),
+                    ),
+                    child: Text(
+                      chip,
+                      style: TextStyle(
+                        color: selected ? AppColors.accent : AppColors.textMuted,
+                        fontSize: 12,
+                        fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          );
+        }),
       ],
     );
   }
@@ -904,7 +1023,8 @@ class _SalaryScreenState extends State<SalaryScreen> {
 
 class _LimitedGroupCard extends StatelessWidget {
   final Map<String, dynamic> group;
-  const _LimitedGroupCard({required this.group});
+  final double globalMaxEur;
+  const _LimitedGroupCard({required this.group, required this.globalMaxEur});
 
   @override
   Widget build(BuildContext context) {
@@ -913,6 +1033,9 @@ class _LimitedGroupCard extends StatelessWidget {
     final String aircraft = group['aircraftType'] as String? ?? '-';
     final bool hasData = group['hasData'] as bool? ?? false;
     final int count = group['count'] as int? ?? 0;
+    final double minEur = group['minEur'] as double? ?? 0;
+    final double maxEur = group['maxEur'] as double? ?? 0;
+    final double rel = (globalMaxEur > 0 && hasData) ? (maxEur / globalMaxEur).clamp(0.0, 1.0) : 0.0;
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -921,46 +1044,64 @@ class _LimitedGroupCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppColors.border),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  airline,
-                  style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      airline,
+                      style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                    const SizedBox(height: 4),
+                    Text('$rank · $aircraft', style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                    Text(
+                      '$count submission${count == 1 ? '' : 's'}',
+                      style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text('$rank · $aircraft', style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
-                Text(
-                  '$count submission${count == 1 ? '' : 's'}',
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+              ),
+              if (hasData)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: <Widget>[
+                    const Text('Base Salary Range', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${_fmt(minEur)} – ${_fmt(maxEur)} EUR',
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                )
+              else
+                const Text(
+                  'Not enough\ndata yet',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                 ),
-              ],
-            ),
+            ],
           ),
-          if (hasData)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: <Widget>[
-                const Text('Base Salary', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
-                Text(
-                  '${_fmt(group['minEur'] as double)} – ${_fmt(group['maxEur'] as double)} EUR',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            )
-          else
-            const Text(
-              'Not enough\ndata yet',
-              textAlign: TextAlign.right,
-              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+          if (hasData) ...<Widget>[
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: LinearProgressIndicator(
+                value: rel,
+                backgroundColor: AppColors.border,
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.accent.withValues(alpha: 0.7)),
+                minHeight: 4,
+              ),
             ),
+          ],
         ],
       ),
     );
@@ -996,28 +1137,41 @@ class _PeerCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: 160,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: AppColors.bgCard,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: AppColors.border),
         ),
+        clipBehavior: Clip.antiAlias,
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Text(
-              '${_fmt(baseSalary)} $currency',
-              style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
-            ),
-            if (currency != 'EUR' && eurSalary > 0)
-              Text(
-                '≈ ${_fmt(eurSalary)} EUR',
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+            Container(height: 2, color: AppColors.accent),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    '${_fmt(baseSalary)} $currency',
+                    style: const TextStyle(
+                      color: AppColors.accent,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 17,
+                    ),
+                  ),
+                  if (currency != 'EUR' && eurSalary > 0)
+                    Text(
+                      '≈ ${_fmt(eurSalary)} EUR',
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                    ),
+                  const SizedBox(height: 6),
+                  Text(country, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  Text('$seniority yr seniority', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                ],
               ),
-            const SizedBox(height: 4),
-            Text(country, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
-            Text('$seniority yr seniority', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+            ),
           ],
         ),
       ),
@@ -1034,8 +1188,19 @@ class _BestCountriesCard extends StatelessWidget {
   final List<Map<String, dynamic>> countries;
   const _BestCountriesCard({required this.countries});
 
+  Color _rankColor(int rank) {
+    if (rank == 0) return const Color(0xFFD4A017);
+    if (rank == 1) return const Color(0xFF9EA0A5);
+    if (rank == 2) return const Color(0xFFC17F40);
+    return AppColors.textMuted;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final double maxEur = countries.isEmpty
+        ? 1
+        : (countries.first['salaryEur'] as double? ?? 1);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
@@ -1052,36 +1217,71 @@ class _BestCountriesCard extends StatelessWidget {
           final String currency = item['currency'] as String? ?? '';
           final String country = item['country'] as String? ?? '-';
           final bool isLast = idx == countries.length - 1;
+          final Color rankColor = _rankColor(idx);
+          final double rel = maxEur > 0 ? (salaryEur / maxEur).clamp(0.0, 1.0) : 0.0;
+
           return Padding(
-            padding: EdgeInsets.only(bottom: isLast ? 0 : 10),
+            padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: <Widget>[
-                SizedBox(
-                  width: 20,
-                  child: Text(
-                    '${idx + 1}',
-                    style: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.bold, fontSize: 14),
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: rankColor.withValues(alpha: 0.12),
+                    border: Border.all(color: rankColor.withValues(alpha: 0.4), width: 1.5),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${idx + 1}',
+                      style: TextStyle(color: rankColor, fontWeight: FontWeight.bold, fontSize: 12),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: Text(country, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: <Widget>[
-                    Text(
-                      currency == 'EUR'
-                          ? '${_fmt(salary)} EUR'
-                          : '${_fmt(salary)} $currency',
-                      style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600, fontSize: 13),
-                    ),
-                    if (currency != 'EUR' && salaryEur > 0)
-                      Text(
-                        '≈ ${_fmt(salaryEur)} EUR',
-                        style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: Text(
+                              country,
+                              style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            currency == 'EUR' ? '${_fmt(salary)} EUR' : '${_fmt(salary)} $currency',
+                            style: TextStyle(
+                              color: rankColor,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
-                  ],
+                      if (currency != 'EUR' && salaryEur > 0)
+                        Text(
+                          '≈ ${_fmt(salaryEur)} EUR',
+                          style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                        ),
+                      const SizedBox(height: 5),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(3),
+                        child: LinearProgressIndicator(
+                          value: rel,
+                          backgroundColor: AppColors.border,
+                          valueColor: AlwaysStoppedAnimation<Color>(rankColor.withValues(alpha: 0.65)),
+                          minHeight: 4,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -1097,53 +1297,6 @@ class _BestCountriesCard extends StatelessWidget {
   );
 }
 
-class _FilterDrop extends StatelessWidget {
-  final String hint;
-  final String? value;
-  final List<String> options;
-  final ValueChanged<String?> onChanged;
-
-  const _FilterDrop({
-    required this.hint,
-    required this.value,
-    required this.options,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 44,
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: value != null ? AppColors.accent : AppColors.border),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String?>(
-          isExpanded: true,
-          hint: Text(hint, style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
-          value: value,
-          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.accent, size: 18),
-          dropdownColor: AppColors.bgCard,
-          style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
-          items: <DropdownMenuItem<String?>>[
-            DropdownMenuItem<String?>(
-              value: null,
-              child: Text('All $hint', style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
-            ),
-            ...options.map((String o) => DropdownMenuItem<String?>(
-              value: o,
-              child: Text(o, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
-            )),
-          ],
-          onChanged: onChanged,
-        ),
-      ),
-    );
-  }
-}
 
 class _SearchableFilterDrop extends StatelessWidget {
   final String hint;
@@ -1348,84 +1501,112 @@ class _SalaryCard extends StatelessWidget {
     final double eurPerDiem = _toEur(perDiem, currency, rates);
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppColors.bgCard,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  airline,
-                  style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.accent.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(rank, style: const TextStyle(color: AppColors.accent, fontSize: 13, fontWeight: FontWeight.w600)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _Row('Aircraft', aircraft),
-          _Row('Contract', contract),
-          _Row('Seniority', '$seniority yr'),
-          _Row('Country', country),
-          _Row('Base/City', base),
-          const SizedBox(height: 8),
-          const Divider(color: AppColors.border, height: 1),
-          const SizedBox(height: 8),
-          Row(
-            children: <Widget>[
-              Expanded(
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Container(width: 3, color: AppColors.accent),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    const Text('Base Salary', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${_fmt(baseSalary)} $currency',
-                      style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
+                    // Header
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            airline,
+                            style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.accent.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(rank, style: const TextStyle(color: AppColors.accent, fontSize: 13, fontWeight: FontWeight.w600)),
+                        ),
+                      ],
                     ),
-                    if (currency != 'EUR' && eurBase > 0)
-                      Text(
-                        '≈ ${_fmt(eurBase)} EUR',
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$aircraft · $contract · $seniority yr',
+                      style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                    ),
+                    Text(
+                      '$country · $base',
+                      style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(color: AppColors.border, height: 1),
+                    const SizedBox(height: 16),
+
+                    // Hero salary
+                    Center(
+                      child: Column(
+                        children: <Widget>[
+                          Text(
+                            '${_fmt(baseSalary)} $currency',
+                            style: const TextStyle(
+                              color: AppColors.accent,
+                              fontSize: 40,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: -1,
+                              height: 1,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          const Text(
+                            'Base Salary',
+                            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                          ),
+                          if (currency != 'EUR' && eurBase > 0)
+                            Text(
+                              '≈ ${_fmt(eurBase)} EUR',
+                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                            ),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppColors.accent.withValues(alpha: 0.10),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                const Text('Per Diem  ', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                                Text(
+                                  '${_fmt(perDiem)} $currency',
+                                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
+                                ),
+                                if (currency != 'EUR' && eurPerDiem > 0)
+                                  Text(
+                                    '  ≈ ${_fmt(eurPerDiem)} EUR',
+                                    style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
+                    ),
                   ],
                 ),
               ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    const Text('Per Diem', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${_fmt(perDiem)} $currency',
-                      style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600, fontSize: 15),
-                    ),
-                    if (currency != 'EUR' && eurPerDiem > 0)
-                      Text(
-                        '≈ ${_fmt(eurPerDiem)} EUR',
-                        style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1436,22 +1617,3 @@ class _SalaryCard extends StatelessWidget {
   );
 }
 
-class _Row extends StatelessWidget {
-  final String label;
-  final String value;
-  const _Row(this.label, this.value);
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 4),
-    child: Row(
-      children: <Widget>[
-        SizedBox(
-          width: 90,
-          child: Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
-        ),
-        Expanded(child: Text(value, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-      ],
-    ),
-  );
-}
