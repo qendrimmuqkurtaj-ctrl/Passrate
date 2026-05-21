@@ -732,7 +732,7 @@ class _SalaryScreenState extends State<SalaryScreen> {
                   _buildEmptyInsightCard('Not enough data yet — check back later')
                 else
                   SizedBox(
-                    height: 100,
+                    height: 140,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: peers.length,

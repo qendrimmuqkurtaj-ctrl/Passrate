@@ -34,7 +34,7 @@ class SubmitSalaryController extends GetxController {
   final RxString selectedCountry = ''.obs;
   final RxString selectedBase = ''.obs;
 
-  final TextEditingController seniorityController = TextEditingController();
+  final RxString selectedSeniority = ''.obs;
   final TextEditingController baseSalaryController = TextEditingController();
   final TextEditingController perDiemController = TextEditingController();
   final TextEditingController baseController = TextEditingController();
@@ -47,7 +47,7 @@ class SubmitSalaryController extends GetxController {
   bool get allCompleted =>
       selectedAirline.value != null &&
       selectedRank.value.isNotEmpty &&
-      seniorityController.text.isNotEmpty &&
+      selectedSeniority.value.isNotEmpty &&
       selectedAircraftType.value.isNotEmpty &&
       selectedContractType.value.isNotEmpty &&
       baseSalaryController.text.isNotEmpty &&
@@ -60,7 +60,7 @@ class SubmitSalaryController extends GetxController {
   bool get step1Done =>
       selectedAirline.value != null &&
       selectedRank.value.isNotEmpty &&
-      seniorityController.text.isNotEmpty &&
+      selectedSeniority.value.isNotEmpty &&
       selectedAircraftType.value.isNotEmpty;
 
   bool get step2Done =>
@@ -90,7 +90,6 @@ class SubmitSalaryController extends GetxController {
 
   @override
   void onClose() {
-    seniorityController.dispose();
     baseSalaryController.dispose();
     perDiemController.dispose();
     baseController.dispose();
@@ -143,7 +142,7 @@ class SubmitSalaryController extends GetxController {
         airlineId: selectedAirline.value!['id'] as String,
         airlineName: selectedAirline.value!['name'] as String,
         rank: selectedRank.value,
-        seniorityYears: int.tryParse(seniorityController.text) ?? 0,
+        seniorityYears: int.tryParse(selectedSeniority.value) ?? 0,
         aircraftType: selectedAircraftType.value,
         contractType: selectedContractType.value,
         baseSalary: double.tryParse(baseSalaryController.text) ?? 0,
@@ -251,11 +250,14 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
 
                     // Seniority
                     const _FieldLabel('Seniority (years)'),
-                    _NumberField(
-                      controller: c.seniorityController,
-                      hint: 'Enter years of seniority',
-                      onChanged: (_) => c.update(),
-                    ),
+                    Obx(() => _OptionDrop(
+                      hint: 'Select years of seniority',
+                      value: c.selectedSeniority.value.isEmpty ? null : c.selectedSeniority.value,
+                      options: List<String>.generate(20, (int i) => '${i + 1}'),
+                      onChanged: (String? v) {
+                        if (v != null) { c.selectedSeniority.value = v; c.update(); }
+                      },
+                    )),
                     const SizedBox(height: 16),
 
                     // Aircraft type
@@ -501,7 +503,7 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
         'currency': c.selectedCurrency.value,
         'baseSalary': double.tryParse(c.baseSalaryController.text) ?? 0.0,
         'perDiem': double.tryParse(c.perDiemController.text) ?? 0.0,
-        'seniority': int.tryParse(c.seniorityController.text) ?? 0,
+        'seniority': int.tryParse(c.selectedSeniority.value) ?? 0,
         'isUpdate': widget.existingDocId != null,
       };
       await Get.off<void>(() => SubmitSalaryConfirmScreen(
