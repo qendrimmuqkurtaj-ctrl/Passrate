@@ -42,7 +42,6 @@ class AssessmentController extends GetxController {
     super.onInit();
     loadAirlines();
     loadTasks();
-    _setDefaultDate();
   }
 
   @override
@@ -143,7 +142,7 @@ class AssessmentController extends GetxController {
     selectedTaskIds.clear();
     selectedTaskNames.clear();
     passed.value = null;
-    _setDefaultDate();
+    dateController.clear();
     update();
   }
 }
