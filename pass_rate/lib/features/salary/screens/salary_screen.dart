@@ -647,6 +647,7 @@ class _SalaryScreenState extends State<SalaryScreen> {
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
           child: Obx(() => _SearchableFilterDrop(
             hint: 'Airline',
+            placeholder: 'All Airlines',
             value: c.limitedAirlineFilter.value.isEmpty ? null : c.limitedAirlineFilter.value,
             options: c.limitedAirlines,
             onChanged: (String? v) => c.limitedAirlineFilter.value = v ?? '',
@@ -873,6 +874,7 @@ class _SalaryScreenState extends State<SalaryScreen> {
   Widget _buildSearchBar(SalaryController c) {
     return Obx(() => _SearchableFilterDrop(
       hint: 'Airline',
+      placeholder: 'All Airlines',
       value: c.searchQuery.value.isEmpty ? null : c.searchQuery.value,
       options: c.airlineNames.toList(),
       onChanged: (String? v) => c.searchQuery.value = v ?? '',
@@ -890,12 +892,14 @@ class _SalaryScreenState extends State<SalaryScreen> {
                 value: c.filterRank.value.isEmpty ? null : c.filterRank.value,
                 options: const <String>['SO', 'FO', 'Captain'],
                 onChanged: (String? v) => c.filterRank.value = v ?? '',
+                searchable: false,
               )),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Obx(() => _SearchableFilterDrop(
                 hint: 'Country',
+                placeholder: 'All Countries',
                 value: c.filterCountry.value.isEmpty ? null : c.filterCountry.value,
                 options: c.availableCountries,
                 onChanged: (String? v) => c.filterCountry.value = v ?? '',
@@ -909,6 +913,7 @@ class _SalaryScreenState extends State<SalaryScreen> {
             Expanded(
               child: Obx(() => _SearchableFilterDrop(
                 hint: 'Aircraft',
+                placeholder: 'All Aircraft Types',
                 value: c.filterAircraftType.value.isEmpty ? null : c.filterAircraftType.value,
                 options: kAircraftTypes,
                 onChanged: (String? v) => c.filterAircraftType.value = v ?? '',
@@ -918,6 +923,7 @@ class _SalaryScreenState extends State<SalaryScreen> {
             Expanded(
               child: Obx(() => _SearchableFilterDrop(
                 hint: 'Base/City',
+                placeholder: 'All Bases',
                 value: c.filterBase.value.isEmpty ? null : c.filterBase.value,
                 options: c.availableBases,
                 onChanged: (String? v) => c.filterBase.value = v ?? '',
@@ -1275,7 +1281,7 @@ class _BestCountriesCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      if (currency != 'EUR' && salaryEur > 0)
+                      if (salaryEur > 0)
                         Text(
                           '≈ ${_fmt(salaryEur)} EUR',
                           style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
@@ -1310,19 +1316,25 @@ class _BestCountriesCard extends StatelessWidget {
 
 class _SearchableFilterDrop extends StatelessWidget {
   final String hint;
+  final String? placeholder;
   final String? value;
   final List<String> options;
   final ValueChanged<String?> onChanged;
+  final bool searchable;
 
   const _SearchableFilterDrop({
     required this.hint,
     required this.value,
     required this.options,
     required this.onChanged,
+    this.placeholder,
+    this.searchable = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    final String displayText = value ?? placeholder ?? hint;
+    final bool hasValue = value != null;
     return GestureDetector(
       onTap: () => _open(context),
       child: Container(
@@ -1330,16 +1342,16 @@ class _SearchableFilterDrop extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.bgCard,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: value != null ? AppColors.accent : AppColors.border),
+          border: Border.all(color: hasValue ? AppColors.accent : AppColors.border),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 10),
         child: Row(
           children: <Widget>[
             Expanded(
               child: Text(
-                value ?? hint,
+                displayText,
                 style: TextStyle(
-                  color: value != null ? AppColors.textPrimary : AppColors.textMuted,
+                  color: hasValue ? AppColors.textPrimary : AppColors.textMuted,
                   fontSize: 13,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -1360,7 +1372,7 @@ class _SearchableFilterDrop extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (_) => _FilterSearchSheet(hint: hint, items: options),
+      builder: (_) => _FilterSearchSheet(hint: hint, items: options, searchable: searchable),
     );
     if (picked != null) onChanged(picked);
   }
@@ -1369,7 +1381,8 @@ class _SearchableFilterDrop extends StatelessWidget {
 class _FilterSearchSheet extends StatefulWidget {
   final String hint;
   final List<String> items;
-  const _FilterSearchSheet({required this.hint, required this.items});
+  final bool searchable;
+  const _FilterSearchSheet({required this.hint, required this.items, this.searchable = true});
 
   @override
   State<_FilterSearchSheet> createState() => _FilterSearchSheetState();
@@ -1425,35 +1438,37 @@ class _FilterSearchSheetState extends State<_FilterSearchSheet> {
               style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 15),
             ),
           ),
-          const SizedBox(height: 10),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              controller: _ctrl,
-              autofocus: true,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
-              decoration: InputDecoration(
-                hintText: 'Search...',
-                hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
-                prefixIcon: const Icon(Icons.search, color: AppColors.textMuted, size: 20),
-                filled: true,
-                fillColor: AppColors.bgPrimary,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.border),
+          if (widget.searchable) ...<Widget>[
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: TextField(
+                controller: _ctrl,
+                autofocus: true,
+                style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: 'Search...',
+                  hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+                  prefixIcon: const Icon(Icons.search, color: AppColors.textMuted, size: 20),
+                  filled: true,
+                  fillColor: AppColors.bgPrimary,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: AppColors.accent),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.border),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.accent),
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
               ),
             ),
-          ),
+          ],
           const SizedBox(height: 8),
           SizedBox(
             height: 300,

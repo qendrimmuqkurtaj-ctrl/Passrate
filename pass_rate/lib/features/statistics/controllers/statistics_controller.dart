@@ -8,6 +8,9 @@ class StatisticsController extends GetxController {
   final RxBool isLoadingSubmission = false.obs;
   final RxBool isLoadingSearch = false.obs;
   final RxBool hasSearched = false.obs;
+  final RxBool hasSearchError = false.obs;
+  final RxBool hasPassRateError = false.obs;
+  final RxBool hasSubmissionError = false.obs;
 
   final RxList<Map<String, dynamic>> topByPassRate = <Map<String, dynamic>>[].obs;
   final RxList<Map<String, dynamic>> topBySubmission = <Map<String, dynamic>>[].obs;
@@ -37,23 +40,38 @@ class StatisticsController extends GetxController {
 
   Future<void> loadTopByPassRate() async {
     isLoadingPassRate.value = true;
-    topByPassRate.value = await FirebaseService.getTopAirlinesByPassRate(filterYearPassRate.value);
+    hasPassRateError.value = false;
+    try {
+      topByPassRate.value = await FirebaseService.getTopAirlinesByPassRate(filterYearPassRate.value);
+    } catch (_) {
+      hasPassRateError.value = true;
+    }
     isLoadingPassRate.value = false;
   }
 
   Future<void> loadTopBySubmission() async {
     isLoadingSubmission.value = true;
-    topBySubmission.value = await FirebaseService.getTopAirlinesBySubmission(filterYearSubmission.value);
+    hasSubmissionError.value = false;
+    try {
+      topBySubmission.value = await FirebaseService.getTopAirlinesBySubmission(filterYearSubmission.value);
+    } catch (_) {
+      hasSubmissionError.value = true;
+    }
     isLoadingSubmission.value = false;
   }
 
   Future<void> searchStatistics() async {
     isLoadingSearch.value = true;
     hasSearched.value = false;
-    airlineStats.value = await FirebaseService.getAirlineStatistics(
-      airlineName: selectedAirlineName.value,
-      year: searchYear.value,
-    );
+    hasSearchError.value = false;
+    try {
+      airlineStats.value = await FirebaseService.getAirlineStatistics(
+        airlineName: selectedAirlineName.value,
+        year: searchYear.value,
+      );
+    } catch (_) {
+      hasSearchError.value = true;
+    }
     hasSearched.value = true;
     isLoadingSearch.value = false;
   }

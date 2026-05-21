@@ -2,7 +2,7 @@ class AppStrings {
   AppStrings._();
   static const String appName = 'PassRate';
   static const String submitAssessment = 'Submit Assessment';
-  static const String statistics = 'Statistics';
+  static const String statistics = 'Pass Rates';
   static const String yourSubmissions = 'Your Submissions';
   static const String submitResultTitle = 'Submit Result';
   static const String airlineName = 'Airline Name';
@@ -14,7 +14,7 @@ class AppStrings {
   static const String submit = 'Submit';
   static const String passed = 'PASSED';
   static const String failed = 'FAILED';
-  static const String statisticsOverview = 'Statistics Overview';
+  static const String statisticsOverview = 'Pass Rates';
   static const String checkPassRatesAssessmentContent = 'Check Pass Rates & Assessment Content';
   static const String topResults = 'Top Results';
   static const String topAirlinesByPassRate = 'Top Airlines by Pass Rate';
@@ -42,6 +42,6 @@ class AppStrings {
   static const String iAgreeToTheTerms = 'I agree to the terms and policy';
   static const String noAirlineFound = 'No airlines found';
   static const String submitAnother = 'Submit Another';
-  static const String viewStatics = 'View Statistics';
+  static const String viewStatics = 'View Pass Rates';
   static const String resultSubmitted = 'Thank you! Your result has been submitted.';
 }

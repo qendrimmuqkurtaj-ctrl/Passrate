@@ -596,7 +596,7 @@ class ConfirmScreen extends StatelessWidget {
                       Get.offAll(() => const HomeScreen());
                       Get.to(() => const StatisticsScreen());
                     },
-                    child: const Text('View Statistics'),
+                    child: const Text('View Pass Rates'),
                   ),
                 ),
               ],

@@ -113,14 +113,11 @@ class FirebaseService {
     final List<Map<String, dynamic>> list = snap.docs
         .map((DocumentSnapshot d) => {'id': d.id, ...d.data() as Map<String, dynamic>})
         .toList();
-    // Sort client-side to avoid requiring a composite Firestore index.
+    // Sort client-side by assessment date (YYYY-MM string) newest first.
     list.sort((Map<String, dynamic> a, Map<String, dynamic> b) {
-      final Timestamp? ta = a['createdAt'] as Timestamp?;
-      final Timestamp? tb = b['createdAt'] as Timestamp?;
-      if (ta == null && tb == null) return 0;
-      if (ta == null) return 1;
-      if (tb == null) return -1;
-      return tb.compareTo(ta);
+      final String da = a['date'] as String? ?? '';
+      final String db = b['date'] as String? ?? '';
+      return db.compareTo(da);
     });
     return list;
   }

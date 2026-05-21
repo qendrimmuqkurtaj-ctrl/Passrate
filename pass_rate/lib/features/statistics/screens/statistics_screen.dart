@@ -48,7 +48,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           onPressed: () => Get.back(),
         ),
         title: const Text(
-          'Statistics Overview',
+          'Pass Rates',
           style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 16),
         ),
         centerTitle: true,
@@ -104,6 +104,28 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             // Search results
             Obx(() {
               if (c.isLoadingSearch.value) return _buildSearchResultSkeleton();
+              if (c.hasSearchError.value) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      const SizedBox(height: 8),
+                      const Icon(Icons.wifi_off_outlined, color: AppColors.textMuted, size: 48),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Could not load results.\nCheck your connection and try again.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: c.searchStatistics,
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                );
+              }
               final Map<String, dynamic>? stats = c.airlineStats.value;
               if (stats != null) return _buildSearchResult(c, stats);
               if (c.hasSearched.value) {
@@ -143,6 +165,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               title: 'Top Airlines by Pass Rate',
               selectedYear: c.filterYearPassRate.value,
               isLoading: c.isLoadingPassRate.value,
+              hasError: c.hasPassRateError.value,
               items: c.topByPassRate,
               valueBuilder: (Map<String, dynamic> item) =>
                   '${(item['successRate'] as double).toStringAsFixed(1)}%',
@@ -156,6 +179,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 c.filterYearPassRate.value = y;
                 c.loadTopByPassRate();
               },
+              onRetry: c.loadTopByPassRate,
             )),
             const SizedBox(height: 12),
 
@@ -164,6 +188,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               title: 'Top Airlines by Submission Count',
               selectedYear: c.filterYearSubmission.value,
               isLoading: c.isLoadingSubmission.value,
+              hasError: c.hasSubmissionError.value,
               items: c.topBySubmission,
               valueBuilder: (Map<String, dynamic> item) => '${item['submissionCount']}',
               relativeValue: (Map<String, dynamic> item) {
@@ -176,6 +201,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 c.filterYearSubmission.value = y;
                 c.loadTopBySubmission();
               },
+              onRetry: c.loadTopBySubmission,
             )),
             const SizedBox(height: 80),
           ],
@@ -574,11 +600,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     required String title,
     required int selectedYear,
     required bool isLoading,
+    required bool hasError,
     required List<Map<String, dynamic>> items,
     required String Function(Map<String, dynamic>) valueBuilder,
     required double Function(Map<String, dynamic>) relativeValue,
     required String Function(Map<String, dynamic>) nameBuilder,
     required Function(int) onYearSelected,
+    required VoidCallback onRetry,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -638,6 +666,25 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 const SizedBox(height: 10),
                 _skeleton(40),
               ],
+            )
+          else if (hasError)
+            Center(
+              child: Column(
+                children: <Widget>[
+                  const Icon(Icons.wifi_off_outlined, color: AppColors.textMuted, size: 36),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Could not load data.\nCheck your connection and try again.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: onRetry,
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
             )
           else if (items.isEmpty)
             Row(
