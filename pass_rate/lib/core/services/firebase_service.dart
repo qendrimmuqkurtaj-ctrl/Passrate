@@ -300,6 +300,7 @@ class FirebaseService {
     double? guaranteedMonthlyPay,
     double? allInMonthlyEstimate,
     String? amountType,
+    int? totalFlightHours,
   }) async {
     final Map<String, dynamic> data = <String, dynamic>{
       'deviceId': deviceId,
@@ -317,6 +318,7 @@ class FirebaseService {
       if (guaranteedMonthlyPay != null) 'guaranteedMonthlyPay': guaranteedMonthlyPay,
       if (allInMonthlyEstimate != null) 'allInMonthlyEstimate': allInMonthlyEstimate,
       if (amountType != null && amountType.isNotEmpty) 'amountType': amountType,
+      if (totalFlightHours != null) 'totalFlightHours': totalFlightHours,
     };
     final DocumentReference docRef;
     if (existingDocId != null) {

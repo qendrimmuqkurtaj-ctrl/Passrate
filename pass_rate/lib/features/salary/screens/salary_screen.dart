@@ -18,6 +18,7 @@ class SalaryController extends GetxController {
   String myAircraftType = '';
   int mySeniorityYears = 0;
   String myAmountType = '';
+  int myFlightHours = 0;
 
   final RxBool isJobHunting = false.obs;
   final RxBool hasError = false.obs;
@@ -30,6 +31,7 @@ class SalaryController extends GetxController {
   final RxString filterAircraftType = ''.obs;
   final RxString filterSeniority = ''.obs;
   final RxString filterAmountType = ''.obs;
+  final RxString filterFlightHours = ''.obs;
   final RxString sortBy = 'base'.obs;
   final RxString limitedAirlineFilter = ''.obs;
   final RxList<String> airlineNames = <String>[].obs;
@@ -79,6 +81,18 @@ class SalaryController extends GetxController {
         return true;
       }).toList();
     }
+    if (filterFlightHours.value.isNotEmpty) {
+      final String sel = filterFlightHours.value;
+      list = list.where((Map<String, dynamic> s) {
+        final int hours = (s['totalFlightHours'] as num?)?.toInt() ?? 0;
+        if (sel == '<500h') return hours > 0 && hours < 500;
+        if (sel == '500-1500h') return hours >= 500 && hours <= 1500;
+        if (sel == '1500-3000h') return hours > 1500 && hours <= 3000;
+        if (sel == '3000-5000h') return hours > 3000 && hours <= 5000;
+        if (sel == '5000+h') return hours > 5000;
+        return true;
+      }).toList();
+    }
     final String sort = sortBy.value;
     list.sort((Map<String, dynamic> a, Map<String, dynamic> b) {
       if (sort == 'fixed') {
@@ -114,6 +128,7 @@ class SalaryController extends GetxController {
     if (filterAircraftType.value.isNotEmpty) count++;
     if (filterSeniority.value.isNotEmpty) count++;
     if (filterAmountType.value.isNotEmpty) count++;
+    if (filterFlightHours.value.isNotEmpty) count++;
     return count;
   }
 
@@ -125,35 +140,45 @@ class SalaryController extends GetxController {
     filterAircraftType.value = '';
     filterSeniority.value = '';
     filterAmountType.value = '';
+    filterFlightHours.value = '';
   }
 
-  // Top 3 highest-paid submissions matching user's rank and aircraft type.
+  // Top 3 highest-paid submissions matching user's rank, aircraft type, and experience.
   List<Map<String, dynamic>> get pilotsLikeMe {
     if (myRank.isEmpty || myAircraftType.isEmpty) return <Map<String, dynamic>>[];
 
-    double toEurLocal(Map<String, dynamic> s) =>
-        toEur((s['baseSalary'] as num?)?.toDouble() ?? 0, s['currency'] as String? ?? '');
-
+    final bool myHasSeniority = mySeniorityYears > 0;
+    final bool myHasHours = myFlightHours > 0;
     final String myNormAmt = _normAmtType(myAmountType);
-    List<Map<String, dynamic>> byDelta(int maxDelta) => salaries
-        .where((Map<String, dynamic> s) {
-          if (s['rank'] != myRank || s['aircraftType'] != myAircraftType) return false;
-          if (_normAmtType(s['amountType'] as String?) != myNormAmt) return false;
-          final int seniority = (s['seniorityYears'] as num?)?.toInt() ?? 0;
-          return (seniority - mySeniorityYears).abs() == maxDelta;
-        })
-        .toList()
-      ..sort((Map<String, dynamic> a, Map<String, dynamic> b) =>
-          toEurLocal(b).compareTo(toEurLocal(a)));
 
-    final List<Map<String, dynamic>> result = <Map<String, dynamic>>[];
-    for (int delta = 0; delta <= 2 && result.length < 3; delta++) {
-      for (final Map<String, dynamic> s in byDelta(delta)) {
-        if (result.length >= 3) break;
-        result.add(s);
+    final List<Map<String, dynamic>> matches = salaries.where((Map<String, dynamic> s) {
+      if (s['rank'] != myRank || s['aircraftType'] != myAircraftType) return false;
+      if (_normAmtType(s['amountType'] as String?) != myNormAmt) return false;
+
+      final int peerSeniority = (s['seniorityYears'] as num?)?.toInt() ?? 0;
+      final int peerHours = (s['totalFlightHours'] as num?)?.toInt() ?? 0;
+      final bool peerHasSeniority = peerSeniority > 0;
+      final bool peerHasHours = peerHours > 0;
+
+      if (myHasSeniority && myHasHours && peerHasSeniority && peerHasHours) {
+        return (peerSeniority - mySeniorityYears).abs() <= 2 &&
+            (peerHours - myFlightHours).abs() <= 200;
       }
-    }
-    return result;
+      if (myHasSeniority && peerHasSeniority) {
+        return (peerSeniority - mySeniorityYears).abs() <= 2;
+      }
+      if (myHasHours && peerHasHours) {
+        return (peerHours - myFlightHours).abs() <= 200;
+      }
+      return false;
+    }).toList()
+      ..sort((Map<String, dynamic> a, Map<String, dynamic> b) {
+        final double aEur = toEur((a['baseSalary'] as num?)?.toDouble() ?? 0, a['currency'] as String? ?? '');
+        final double bEur = toEur((b['baseSalary'] as num?)?.toDouble() ?? 0, b['currency'] as String? ?? '');
+        return bEur.compareTo(aEur);
+      });
+
+    return matches.take(3).toList();
   }
 
   // Top 3 countries by the single highest-paid individual submission for the current user's rank.
@@ -245,6 +270,7 @@ class SalaryController extends GetxController {
         myAircraftType = submission['aircraftType'] as String? ?? '';
         mySeniorityYears = (submission['seniorityYears'] as num?)?.toInt() ?? 0;
         myAmountType = submission['amountType'] as String? ?? '';
+        myFlightHours = (submission['totalFlightHours'] as num?)?.toInt() ?? 0;
         final DateTime? updatedAt = submission['updatedAt'] as DateTime?;
         final DateTime? createdAt = submission['createdAt'] as DateTime?;
         final DateTime? effectiveDate = updatedAt ?? createdAt;
@@ -261,6 +287,7 @@ class SalaryController extends GetxController {
         myAircraftType = '';
         mySeniorityYears = 0;
         myAmountType = '';
+        myFlightHours = 0;
         await _fetchRates();
         salaries.value = await FirebaseService.getAllSalaries().timeout(timeout);
       } else {
@@ -269,6 +296,7 @@ class SalaryController extends GetxController {
         myAircraftType = '';
         mySeniorityYears = 0;
         myAmountType = '';
+        myFlightHours = 0;
       }
     } catch (_) {
       hasError.value = true;
@@ -334,6 +362,7 @@ class SalaryController extends GetxController {
     myAircraftType = '';
     mySeniorityYears = 0;
     myAmountType = '';
+    myFlightHours = 0;
     salaries.clear();
     hasSubmitted.value = false;
     isOutdated.value = false;
@@ -1101,6 +1130,42 @@ class _SalaryScreenState extends State<SalaryScreen> {
             }).toList(),
           );
         }),
+        const SizedBox(height: 8),
+        Obx(() {
+          const List<String> chips = <String>['<500h', '500-1500h', '1500-3000h', '3000-5000h', '5000+h'];
+          return Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: chips.map((String chip) {
+              final bool selected = c.filterFlightHours.value == chip;
+              return GestureDetector(
+                onTap: () => c.filterFlightHours.value = selected ? '' : chip,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppColors.accent.withValues(alpha: 0.15)
+                        : AppColors.bgCard,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: selected ? AppColors.accent : AppColors.border,
+                      width: selected ? 1.5 : 1.0,
+                    ),
+                  ),
+                  child: Text(
+                    chip,
+                    style: TextStyle(
+                      color: selected ? AppColors.accent : AppColors.textMuted,
+                      fontSize: 12,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          );
+        }),
       ],
     );
   }
@@ -1709,6 +1774,7 @@ class _SalaryCard extends StatelessWidget {
     final String airline = salary['airline'] as String? ?? '-';
     final String rank = salary['rank'] as String? ?? '-';
     final int seniority = (salary['seniorityYears'] as num?)?.toInt() ?? 0;
+    final int? totalFlightHours = (salary['totalFlightHours'] as num?)?.toInt();
     final String aircraft = salary['aircraftType'] as String? ?? '-';
     final String contract = salary['contractType'] as String? ?? '-';
     final double baseSalary = (salary['baseSalary'] as num?)?.toDouble() ?? 0;
@@ -1763,7 +1829,7 @@ class _SalaryCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '$aircraft · $contract · $seniority yr',
+                      '$aircraft · $contract · $seniority yr${totalFlightHours != null && totalFlightHours > 0 ? ' · ${_fmt(totalFlightHours.toDouble())} hrs' : ''}',
                       style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
                     Text(

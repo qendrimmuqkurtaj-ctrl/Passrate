@@ -40,6 +40,7 @@ class SubmitSalaryController extends GetxController {
   final TextEditingController baseController = TextEditingController();
   final TextEditingController guaranteedMonthlyPayController = TextEditingController();
   final TextEditingController allInMonthlyEstimateController = TextEditingController();
+  final TextEditingController totalFlightHoursController = TextEditingController();
 
   bool get _baseCompleted {
     if (selectedCountry.value == 'Other') return baseController.text.trim().isNotEmpty;
@@ -117,6 +118,8 @@ class SubmitSalaryController extends GetxController {
         ?? (data['typicalMonthlyTotal'] as num?)?.toDouble();
     if (guaranteed != null && guaranteed > 0) guaranteedMonthlyPayController.text = _fmtNum(guaranteed);
     if (allIn != null && allIn > 0) allInMonthlyEstimateController.text = _fmtNum(allIn);
+    final int? hours = (data['totalFlightHours'] as num?)?.toInt();
+    if (hours != null && hours > 0) totalFlightHoursController.text = hours.toString();
     update();
   }
 
@@ -144,6 +147,7 @@ class SubmitSalaryController extends GetxController {
     baseController.dispose();
     guaranteedMonthlyPayController.dispose();
     allInMonthlyEstimateController.dispose();
+    totalFlightHoursController.dispose();
     super.onClose();
   }
 
@@ -207,6 +211,7 @@ class SubmitSalaryController extends GetxController {
         guaranteedMonthlyPay: double.tryParse(guaranteedMonthlyPayController.text),
         allInMonthlyEstimate: double.tryParse(allInMonthlyEstimateController.text),
         amountType: selectedAmountType.value.isEmpty ? null : selectedAmountType.value,
+        totalFlightHours: int.tryParse(totalFlightHoursController.text),
       );
       return true;
     } catch (_) {
@@ -317,6 +322,17 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                         if (v != null) { c.selectedSeniority.value = v; c.update(); }
                       },
                     )),
+                    const SizedBox(height: 16),
+
+                    // Total Flight Hours (optional)
+                    const _FieldLabel('Total Flight Hours (optional)'),
+                    const _SubLabel('Your total accumulated flight hours'),
+                    _NumberField(
+                      controller: c.totalFlightHoursController,
+                      hint: 'e.g. 3200',
+                      decimal: false,
+                      onChanged: (_) => c.update(),
+                    ),
                     const SizedBox(height: 16),
 
                     // Aircraft type
@@ -629,6 +645,7 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
         'seniority': int.tryParse(c.selectedSeniority.value) ?? 0,
         'guaranteedMonthlyPay': double.tryParse(c.guaranteedMonthlyPayController.text),
         'allInMonthlyEstimate': double.tryParse(c.allInMonthlyEstimateController.text),
+        'totalFlightHours': int.tryParse(c.totalFlightHoursController.text),
         'amountType': c.selectedAmountType.value,
         'isUpdate': widget.existingDocId != null,
       };
@@ -667,6 +684,7 @@ class SubmitSalaryConfirmScreen extends StatelessWidget {
     final double baseSalary = data['baseSalary'] as double;
     final int seniority = data['seniority'] as int;
     final bool isUpdate = data['isUpdate'] as bool;
+    final int? totalFlightHours = data['totalFlightHours'] as int?;
     final double? guaranteedMonthlyPay = data['guaranteedMonthlyPay'] as double?;
     final double? allInMonthlyEstimate = data['allInMonthlyEstimate'] as double?;
 
@@ -725,7 +743,7 @@ class SubmitSalaryConfirmScreen extends StatelessWidget {
                               style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
                             ),
                             Text(
-                              '$rank · $aircraft · $seniority yr',
+                              '$rank · $aircraft · $seniority yr${totalFlightHours != null && totalFlightHours > 0 ? ' · ${_fmt(totalFlightHours.toDouble())} hrs' : ''}',
                               style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
                             ),
                             const SizedBox(height: 20),
