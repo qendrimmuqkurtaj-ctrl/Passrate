@@ -46,10 +46,14 @@ class SubmitSalaryController extends GetxController {
     return selectedBase.value.isNotEmpty;
   }
 
+  bool get _hasExperience =>
+      selectedSeniority.value.isNotEmpty ||
+      (int.tryParse(totalFlightHoursController.text) ?? 0) > 0;
+
   bool get allCompleted =>
       selectedAirline.value != null &&
       selectedRank.value.isNotEmpty &&
-      selectedSeniority.value.isNotEmpty &&
+      _hasExperience &&
       selectedAircraftType.value.isNotEmpty &&
       selectedContractType.value.isNotEmpty &&
       guaranteedMonthlyPayController.text.isNotEmpty &&
@@ -62,7 +66,7 @@ class SubmitSalaryController extends GetxController {
   bool get step1Done =>
       selectedAirline.value != null &&
       selectedRank.value.isNotEmpty &&
-      selectedSeniority.value.isNotEmpty &&
+      _hasExperience &&
       selectedAircraftType.value.isNotEmpty;
 
   bool get step2Done =>
@@ -605,9 +609,12 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
 
   Future<void> _submit(SubmitSalaryController c, String title) async {
     if (!c.allCompleted) {
+      final String message = !c._hasExperience
+          ? 'Please fill in at least Seniority Years or Total Flight Hours.'
+          : 'Please fill in all required fields.';
       Get.snackbar(
         'Missing Fields',
-        'Please fill in all fields.',
+        message,
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: AppColors.bgCard,
         colorText: AppColors.textPrimary,
@@ -726,7 +733,7 @@ class SubmitSalaryConfirmScreen extends StatelessWidget {
                               style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
                             ),
                             Text(
-                              '$rank · $aircraft · $seniority yr${totalFlightHours != null && totalFlightHours > 0 ? ' · ${_fmt(totalFlightHours.toDouble())} hrs' : ''}',
+                              '$rank · $aircraft${seniority > 0 ? ' · $seniority yr' : ''}${totalFlightHours != null && totalFlightHours > 0 ? ' · ${_fmt(totalFlightHours.toDouble())} hrs' : ''}',
                               style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
                             ),
                             const SizedBox(height: 20),

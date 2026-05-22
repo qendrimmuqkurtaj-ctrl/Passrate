@@ -63,7 +63,7 @@ class SalaryController extends GetxController {
       final String sel = filterSeniority.value;
       list = list.where((Map<String, dynamic> s) {
         final int seniority = (s['seniorityYears'] as num?)?.toInt() ?? 0;
-        if (sel == '<3y') return seniority < 3;
+        if (sel == '<3y') return seniority > 0 && seniority < 3;
         if (sel == '3-6y') return seniority >= 3 && seniority <= 6;
         if (sel == '7-10y') return seniority >= 7 && seniority <= 10;
         if (sel == '11-15y') return seniority >= 11 && seniority <= 15;
@@ -105,10 +105,10 @@ class SalaryController extends GetxController {
             toEur(aVal, a['currency'] as String? ?? ''));
       }
       return toEur(
-        (b['guaranteedMonthlyPay'] as num?)?.toDouble() ?? (b['baseSalary'] as num?)?.toDouble() ?? 0,
+        (b['guaranteedMonthlyPay'] as num?)?.toDouble() ?? (b['fixedMonthlyTotal'] as num?)?.toDouble() ?? (b['baseSalary'] as num?)?.toDouble() ?? 0,
         b['currency'] as String? ?? '',
       ).compareTo(toEur(
-        (a['guaranteedMonthlyPay'] as num?)?.toDouble() ?? (a['baseSalary'] as num?)?.toDouble() ?? 0,
+        (a['guaranteedMonthlyPay'] as num?)?.toDouble() ?? (a['fixedMonthlyTotal'] as num?)?.toDouble() ?? (a['baseSalary'] as num?)?.toDouble() ?? 0,
         a['currency'] as String? ?? '',
       ));
     });
@@ -1837,7 +1837,7 @@ class _SalaryCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '$aircraft · $contract · $seniority yr${totalFlightHours != null && totalFlightHours > 0 ? ' · ${_fmt(totalFlightHours.toDouble())} hrs' : ''}',
+                      '$aircraft · $contract${seniority > 0 ? ' · $seniority yr' : ''}${totalFlightHours != null && totalFlightHours > 0 ? ' · ${_fmt(totalFlightHours.toDouble())} hrs' : ''}',
                       style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
                     Text(
