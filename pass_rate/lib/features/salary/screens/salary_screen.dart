@@ -1712,12 +1712,10 @@ class _SalaryCard extends StatelessWidget {
     final String aircraft = salary['aircraftType'] as String? ?? '-';
     final String contract = salary['contractType'] as String? ?? '-';
     final double baseSalary = (salary['baseSalary'] as num?)?.toDouble() ?? 0;
-    final double perDiem = (salary['perDiem'] as num?)?.toDouble() ?? 0;
     final String country = salary['country'] as String? ?? '-';
     final String base = salary['base'] as String? ?? '-';
     final String currency = salary['currency'] as String? ?? '';
     final double eurBase = _toEur(baseSalary, currency, rates);
-    final double eurPerDiem = _toEur(perDiem, currency, rates);
     final double? fixedMonthlyTotal = (salary['fixedMonthlyTotal'] as num?)?.toDouble();
     final double? typicalMonthlyTotal = (salary['typicalMonthlyTotal'] as num?)?.toDouble();
     final double? eurFixed = fixedMonthlyTotal != null ? _toEur(fixedMonthlyTotal, currency, rates) : null;
@@ -1803,32 +1801,8 @@ class _SalaryCard extends StatelessWidget {
                               '≈ ${_fmt(eurBase)} EUR',
                               style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
                             ),
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: AppColors.accent.withValues(alpha: 0.10),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: <Widget>[
-                                const Text('Per Diem  ', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                                Text(
-                                  '${_fmt(perDiem)} $currency',
-                                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
-                                ),
-                                if (currency != 'EUR' && eurPerDiem > 0)
-                                  Text(
-                                    '  ≈ ${_fmt(eurPerDiem)} EUR',
-                                    style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-                                  ),
-                              ],
-                            ),
-                          ),
                           if (fixedMonthlyTotal != null) ...<Widget>[
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 12),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                               decoration: BoxDecoration(
@@ -1839,7 +1813,7 @@ class _SalaryCard extends StatelessWidget {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: <Widget>[
-                                  const Text('Fixed Total  ', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                                  const Text('Other Fixed  ', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                                   Text(
                                     '${_fmt(fixedMonthlyTotal)} $currency',
                                     style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),

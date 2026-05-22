@@ -37,7 +37,6 @@ class SubmitSalaryController extends GetxController {
 
   final RxString selectedSeniority = ''.obs;
   final TextEditingController baseSalaryController = TextEditingController();
-  final TextEditingController perDiemController = TextEditingController();
   final TextEditingController baseController = TextEditingController();
   final TextEditingController fixedMonthlyTotalController = TextEditingController();
   final TextEditingController typicalMonthlyTotalController = TextEditingController();
@@ -54,7 +53,6 @@ class SubmitSalaryController extends GetxController {
       selectedAircraftType.value.isNotEmpty &&
       selectedContractType.value.isNotEmpty &&
       baseSalaryController.text.isNotEmpty &&
-      perDiemController.text.isNotEmpty &&
       selectedCountry.value.isNotEmpty &&
       _baseCompleted &&
       selectedCurrency.value.isNotEmpty &&
@@ -75,8 +73,7 @@ class SubmitSalaryController extends GetxController {
   bool get step3Done =>
       selectedCurrency.value.isNotEmpty &&
       selectedAmountType.value.isNotEmpty &&
-      baseSalaryController.text.isNotEmpty &&
-      perDiemController.text.isNotEmpty;
+      baseSalaryController.text.isNotEmpty;
 
   Map<String, dynamic>? _prefillData;
 
@@ -111,9 +108,7 @@ class SubmitSalaryController extends GetxController {
     selectedBase.value = base;
     baseController.text = base;
     final double baseSalary = (data['baseSalary'] as num?)?.toDouble() ?? 0;
-    final double perDiem = (data['perDiem'] as num?)?.toDouble() ?? 0;
     if (baseSalary > 0) baseSalaryController.text = _fmtNum(baseSalary);
-    if (perDiem > 0) perDiemController.text = _fmtNum(perDiem);
     final double? fixed = (data['fixedMonthlyTotal'] as num?)?.toDouble();
     final double? typical = (data['typicalMonthlyTotal'] as num?)?.toDouble();
     if (fixed != null && fixed > 0) fixedMonthlyTotalController.text = _fmtNum(fixed);
@@ -142,7 +137,6 @@ class SubmitSalaryController extends GetxController {
   @override
   void onClose() {
     baseSalaryController.dispose();
-    perDiemController.dispose();
     baseController.dispose();
     fixedMonthlyTotalController.dispose();
     typicalMonthlyTotalController.dispose();
@@ -200,7 +194,6 @@ class SubmitSalaryController extends GetxController {
         aircraftType: selectedAircraftType.value,
         contractType: selectedContractType.value,
         baseSalary: double.tryParse(baseSalaryController.text) ?? 0,
-        perDiem: double.tryParse(perDiemController.text) ?? 0,
         country: selectedCountry.value,
         base: selectedCountry.value == 'Other'
             ? baseController.text.trim()
@@ -440,19 +433,9 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Per diem
-                    const _FieldLabel('Per Diem'),
-                    _NumberField(
-                      controller: c.perDiemController,
-                      hint: 'Enter per diem',
-                      decimal: true,
-                      onChanged: (_) => c.update(),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Fixed monthly total (optional)
-                    const _FieldLabel('Fixed Monthly Total (optional)'),
-                    const _SubLabel('All guaranteed allowances + base combined e.g. housing, seniority bonus, command bonus'),
+                    // Other fixed monthly (optional)
+                    const _FieldLabel('Other Fixed Monthly (optional)'),
+                    const _SubLabel('Any guaranteed monthly allowances e.g. housing, per diem, command bonus, seniority bonus'),
                     _NumberField(
                       controller: c.fixedMonthlyTotalController,
                       hint: 'Enter fixed monthly total',
@@ -599,7 +582,6 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
             : c.selectedBase.value,
         'currency': c.selectedCurrency.value,
         'baseSalary': double.tryParse(c.baseSalaryController.text) ?? 0.0,
-        'perDiem': double.tryParse(c.perDiemController.text) ?? 0.0,
         'seniority': int.tryParse(c.selectedSeniority.value) ?? 0,
         'fixedMonthlyTotal': double.tryParse(c.fixedMonthlyTotalController.text),
         'typicalMonthlyTotal': double.tryParse(c.typicalMonthlyTotalController.text),
@@ -639,7 +621,6 @@ class SubmitSalaryConfirmScreen extends StatelessWidget {
     final String base = data['base'] as String;
     final String currency = data['currency'] as String;
     final double baseSalary = data['baseSalary'] as double;
-    final double perDiem = data['perDiem'] as double;
     final int seniority = data['seniority'] as int;
     final bool isUpdate = data['isUpdate'] as bool;
     final double? fixedMonthlyTotal = data['fixedMonthlyTotal'] as double?;
@@ -722,21 +703,8 @@ class SubmitSalaryConfirmScreen extends StatelessWidget {
                                     'Base Salary',
                                     style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                                   ),
-                                  const SizedBox(height: 12),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.accent.withValues(alpha: 0.10),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
-                                    ),
-                                    child: Text(
-                                      'Per Diem  ${_fmt(perDiem)} $currency',
-                                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
-                                    ),
-                                  ),
                                   if (fixedMonthlyTotal != null) ...<Widget>[
-                                    const SizedBox(height: 6),
+                                    const SizedBox(height: 12),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                                       decoration: BoxDecoration(
@@ -745,7 +713,7 @@ class SubmitSalaryConfirmScreen extends StatelessWidget {
                                         border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
                                       ),
                                       child: Text(
-                                        'Fixed Total  ${_fmt(fixedMonthlyTotal)} $currency',
+                                        'Other Fixed  ${_fmt(fixedMonthlyTotal)} $currency',
                                         style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
                                       ),
                                     ),
