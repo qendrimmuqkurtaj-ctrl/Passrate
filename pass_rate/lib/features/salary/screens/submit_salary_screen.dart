@@ -33,11 +33,14 @@ class SubmitSalaryController extends GetxController {
   final RxString selectedCurrency = ''.obs;
   final RxString selectedCountry = ''.obs;
   final RxString selectedBase = ''.obs;
+  final RxString selectedAmountType = ''.obs;
 
   final RxString selectedSeniority = ''.obs;
   final TextEditingController baseSalaryController = TextEditingController();
   final TextEditingController perDiemController = TextEditingController();
   final TextEditingController baseController = TextEditingController();
+  final TextEditingController fixedMonthlyTotalController = TextEditingController();
+  final TextEditingController typicalMonthlyTotalController = TextEditingController();
 
   bool get _baseCompleted {
     if (selectedCountry.value == 'Other') return baseController.text.trim().isNotEmpty;
@@ -54,7 +57,8 @@ class SubmitSalaryController extends GetxController {
       perDiemController.text.isNotEmpty &&
       selectedCountry.value.isNotEmpty &&
       _baseCompleted &&
-      selectedCurrency.value.isNotEmpty;
+      selectedCurrency.value.isNotEmpty &&
+      selectedAmountType.value.isNotEmpty;
 
   // Step completion for the progress header
   bool get step1Done =>
@@ -70,8 +74,55 @@ class SubmitSalaryController extends GetxController {
 
   bool get step3Done =>
       selectedCurrency.value.isNotEmpty &&
+      selectedAmountType.value.isNotEmpty &&
       baseSalaryController.text.isNotEmpty &&
       perDiemController.text.isNotEmpty;
+
+  Map<String, dynamic>? _prefillData;
+
+  void prefillWith(Map<String, dynamic> data) {
+    _prefillData = data;
+    if (!loadingAirlines.value && airlines.isNotEmpty) _applyPrefill();
+  }
+
+  void _applyPrefill() {
+    final Map<String, dynamic>? data = _prefillData;
+    if (data == null) return;
+    _prefillData = null;
+
+    final String airlineName = data['airline'] as String? ?? '';
+    if (airlineName.isNotEmpty) {
+      try {
+        final Map<String, dynamic> match = airlines.firstWhere(
+          (Map<String, dynamic> a) => (a['name'] as String? ?? '') == airlineName,
+        );
+        selectedAirline.value = match;
+      } catch (_) {}
+    }
+    selectedRank.value = data['rank'] as String? ?? '';
+    final int sen = (data['seniorityYears'] as num?)?.toInt() ?? 0;
+    if (sen > 0) selectedSeniority.value = sen.toString();
+    selectedAircraftType.value = data['aircraftType'] as String? ?? '';
+    selectedContractType.value = data['contractType'] as String? ?? '';
+    selectedCurrency.value = data['currency'] as String? ?? '';
+    selectedAmountType.value = data['amountType'] as String? ?? '';
+    selectedCountry.value = data['country'] as String? ?? '';
+    final String base = data['base'] as String? ?? '';
+    selectedBase.value = base;
+    baseController.text = base;
+    final double baseSalary = (data['baseSalary'] as num?)?.toDouble() ?? 0;
+    final double perDiem = (data['perDiem'] as num?)?.toDouble() ?? 0;
+    if (baseSalary > 0) baseSalaryController.text = _fmtNum(baseSalary);
+    if (perDiem > 0) perDiemController.text = _fmtNum(perDiem);
+    final double? fixed = (data['fixedMonthlyTotal'] as num?)?.toDouble();
+    final double? typical = (data['typicalMonthlyTotal'] as num?)?.toDouble();
+    if (fixed != null && fixed > 0) fixedMonthlyTotalController.text = _fmtNum(fixed);
+    if (typical != null && typical > 0) typicalMonthlyTotalController.text = _fmtNum(typical);
+    update();
+  }
+
+  String _fmtNum(double v) =>
+      v == v.truncateToDouble() ? v.truncate().toString() : v.toString();
 
   void selectCountry(String? country) {
     selectedCountry.value = country ?? '';
@@ -93,6 +144,8 @@ class SubmitSalaryController extends GetxController {
     baseSalaryController.dispose();
     perDiemController.dispose();
     baseController.dispose();
+    fixedMonthlyTotalController.dispose();
+    typicalMonthlyTotalController.dispose();
     super.onClose();
   }
 
@@ -101,6 +154,7 @@ class SubmitSalaryController extends GetxController {
     loadingAirlinesError.value = false;
     try {
       airlines.value = await FirebaseService.getAirlines();
+      if (_prefillData != null) _applyPrefill();
     } catch (_) {
       loadingAirlinesError.value = true;
     } finally {
@@ -153,6 +207,9 @@ class SubmitSalaryController extends GetxController {
             : selectedBase.value,
         currency: selectedCurrency.value,
         existingDocId: existingDocId,
+        fixedMonthlyTotal: double.tryParse(fixedMonthlyTotalController.text),
+        typicalMonthlyTotal: double.tryParse(typicalMonthlyTotalController.text),
+        amountType: selectedAmountType.value.isEmpty ? null : selectedAmountType.value,
       );
       return true;
     } catch (_) {
@@ -167,8 +224,9 @@ class SubmitSalaryController extends GetxController {
 
 class SubmitSalaryScreen extends StatefulWidget {
   final String? existingDocId;
+  final Map<String, dynamic>? initialData;
   final VoidCallback? onDone;
-  const SubmitSalaryScreen({super.key, this.existingDocId, this.onDone});
+  const SubmitSalaryScreen({super.key, this.existingDocId, this.initialData, this.onDone});
 
   @override
   State<SubmitSalaryScreen> createState() => _SubmitSalaryScreenState();
@@ -180,6 +238,7 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
     super.initState();
     final SubmitSalaryController c = Get.put(SubmitSalaryController());
     c.existingDocId = widget.existingDocId;
+    if (widget.initialData != null) c.prefillWith(widget.initialData!);
   }
 
   @override
@@ -347,6 +406,18 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
 
                     // ── COMPENSATION ──────────────────────────────────────────
 
+                    // Amount type
+                    const _FieldLabel('Amount Type'),
+                    Obx(() => _OptionDrop(
+                      hint: 'Gross or Net?',
+                      value: c.selectedAmountType.value.isEmpty ? null : c.selectedAmountType.value,
+                      options: const <String>['Gross (before tax)', 'Net (after tax)'],
+                      onChanged: (String? v) {
+                        if (v != null) { c.selectedAmountType.value = v; c.update(); }
+                      },
+                    )),
+                    const SizedBox(height: 16),
+
                     // Currency
                     const _FieldLabel('Currency'),
                     Obx(() => _OptionDrop(
@@ -374,6 +445,28 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                     _NumberField(
                       controller: c.perDiemController,
                       hint: 'Enter per diem',
+                      decimal: true,
+                      onChanged: (_) => c.update(),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Fixed monthly total (optional)
+                    const _FieldLabel('Fixed Monthly Total (optional)'),
+                    const _SubLabel('All guaranteed allowances + base combined e.g. housing, seniority bonus, command bonus'),
+                    _NumberField(
+                      controller: c.fixedMonthlyTotalController,
+                      hint: 'Enter fixed monthly total',
+                      decimal: true,
+                      onChanged: (_) => c.update(),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Typical monthly total (optional)
+                    const _FieldLabel('Typical Monthly Total (optional)'),
+                    const _SubLabel('Your own estimate of what you typically take home per month'),
+                    _NumberField(
+                      controller: c.typicalMonthlyTotalController,
+                      hint: 'Enter typical monthly total',
                       decimal: true,
                       onChanged: (_) => c.update(),
                     ),
@@ -508,6 +601,9 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
         'baseSalary': double.tryParse(c.baseSalaryController.text) ?? 0.0,
         'perDiem': double.tryParse(c.perDiemController.text) ?? 0.0,
         'seniority': int.tryParse(c.selectedSeniority.value) ?? 0,
+        'fixedMonthlyTotal': double.tryParse(c.fixedMonthlyTotalController.text),
+        'typicalMonthlyTotal': double.tryParse(c.typicalMonthlyTotalController.text),
+        'amountType': c.selectedAmountType.value,
         'isUpdate': widget.existingDocId != null,
       };
       await Get.off<void>(() => SubmitSalaryConfirmScreen(
@@ -546,6 +642,8 @@ class SubmitSalaryConfirmScreen extends StatelessWidget {
     final double perDiem = data['perDiem'] as double;
     final int seniority = data['seniority'] as int;
     final bool isUpdate = data['isUpdate'] as bool;
+    final double? fixedMonthlyTotal = data['fixedMonthlyTotal'] as double?;
+    final double? typicalMonthlyTotal = data['typicalMonthlyTotal'] as double?;
 
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
@@ -637,6 +735,36 @@ class SubmitSalaryConfirmScreen extends StatelessWidget {
                                       style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
                                     ),
                                   ),
+                                  if (fixedMonthlyTotal != null) ...<Widget>[
+                                    const SizedBox(height: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.accent.withValues(alpha: 0.10),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
+                                      ),
+                                      child: Text(
+                                        'Fixed Total  ${_fmt(fixedMonthlyTotal)} $currency',
+                                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
+                                      ),
+                                    ),
+                                  ],
+                                  if (typicalMonthlyTotal != null) ...<Widget>[
+                                    const SizedBox(height: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.accent.withValues(alpha: 0.10),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
+                                      ),
+                                      child: Text(
+                                        'Typical  ~${_fmt(typicalMonthlyTotal)} $currency',
+                                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -1325,6 +1453,20 @@ class _FieldLabel extends StatelessWidget {
     child: Text(
       text,
       style: const TextStyle(color: AppColors.textMuted, fontSize: 13, fontWeight: FontWeight.w500),
+    ),
+  );
+}
+
+class _SubLabel extends StatelessWidget {
+  final String text;
+  const _SubLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Text(
+      text,
+      style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
     ),
   );
 }

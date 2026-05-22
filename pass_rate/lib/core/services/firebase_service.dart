@@ -298,6 +298,9 @@ class FirebaseService {
     required String base,
     required String currency,
     String? existingDocId,
+    double? fixedMonthlyTotal,
+    double? typicalMonthlyTotal,
+    String? amountType,
   }) async {
     final Map<String, dynamic> data = <String, dynamic>{
       'deviceId': deviceId,
@@ -313,6 +316,9 @@ class FirebaseService {
       'base': base,
       'currency': currency,
       'createdAt': FieldValue.serverTimestamp(),
+      if (fixedMonthlyTotal != null) 'fixedMonthlyTotal': fixedMonthlyTotal,
+      if (typicalMonthlyTotal != null) 'typicalMonthlyTotal': typicalMonthlyTotal,
+      if (amountType != null && amountType.isNotEmpty) 'amountType': amountType,
     };
     final DocumentReference docRef;
     if (existingDocId != null) {
@@ -329,6 +335,7 @@ class FirebaseService {
       baseSalary: baseSalary,
       currency: currency,
       currentDocId: docRef.id,
+      amountType: amountType ?? '',
     );
     if (flagReason != null) {
       await docRef.update(<String, dynamic>{
@@ -384,6 +391,9 @@ class FirebaseService {
     return rate > 0 ? amount / rate : 0;
   }
 
+  static String _normalizeAmountType(String? t) =>
+      (t == null || t.isEmpty || t.toLowerCase().startsWith('gross')) ? 'gross' : 'net';
+
   static Future<String?> _checkSalaryFlags({
     required String airlineName,
     required String rank,
@@ -391,6 +401,7 @@ class FirebaseService {
     required double baseSalary,
     required String currency,
     required String currentDocId,
+    required String amountType,
   }) async {
     final Map<String, double> rates = await _fetchRates();
 
@@ -406,9 +417,12 @@ class FirebaseService {
         .where('airline', isEqualTo: airlineName)
         .get();
 
+    final String normalizedType = _normalizeAmountType(amountType);
     final List<Map<String, dynamic>> others = snap.docs
         .where((DocumentSnapshot d) => d.id != currentDocId)
         .map((DocumentSnapshot d) => d.data() as Map<String, dynamic>)
+        .where((Map<String, dynamic> s) =>
+            _normalizeAmountType(s['amountType'] as String?) == normalizedType)
         .toList();
 
     if (rank == 'SO') {
