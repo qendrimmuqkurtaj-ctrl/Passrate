@@ -38,8 +38,8 @@ class SubmitSalaryController extends GetxController {
   final RxString selectedSeniority = ''.obs;
   final TextEditingController baseSalaryController = TextEditingController();
   final TextEditingController baseController = TextEditingController();
-  final TextEditingController fixedMonthlyTotalController = TextEditingController();
-  final TextEditingController typicalMonthlyTotalController = TextEditingController();
+  final TextEditingController guaranteedMonthlyPayController = TextEditingController();
+  final TextEditingController allInMonthlyEstimateController = TextEditingController();
 
   bool get _baseCompleted {
     if (selectedCountry.value == 'Other') return baseController.text.trim().isNotEmpty;
@@ -53,6 +53,7 @@ class SubmitSalaryController extends GetxController {
       selectedAircraftType.value.isNotEmpty &&
       selectedContractType.value.isNotEmpty &&
       baseSalaryController.text.isNotEmpty &&
+      guaranteedMonthlyPayController.text.isNotEmpty &&
       selectedCountry.value.isNotEmpty &&
       _baseCompleted &&
       selectedCurrency.value.isNotEmpty &&
@@ -73,7 +74,8 @@ class SubmitSalaryController extends GetxController {
   bool get step3Done =>
       selectedCurrency.value.isNotEmpty &&
       selectedAmountType.value.isNotEmpty &&
-      baseSalaryController.text.isNotEmpty;
+      baseSalaryController.text.isNotEmpty &&
+      guaranteedMonthlyPayController.text.isNotEmpty;
 
   Map<String, dynamic>? _prefillData;
 
@@ -109,10 +111,12 @@ class SubmitSalaryController extends GetxController {
     baseController.text = base;
     final double baseSalary = (data['baseSalary'] as num?)?.toDouble() ?? 0;
     if (baseSalary > 0) baseSalaryController.text = _fmtNum(baseSalary);
-    final double? fixed = (data['fixedMonthlyTotal'] as num?)?.toDouble();
-    final double? typical = (data['typicalMonthlyTotal'] as num?)?.toDouble();
-    if (fixed != null && fixed > 0) fixedMonthlyTotalController.text = _fmtNum(fixed);
-    if (typical != null && typical > 0) typicalMonthlyTotalController.text = _fmtNum(typical);
+    final double? guaranteed = (data['guaranteedMonthlyPay'] as num?)?.toDouble()
+        ?? (data['fixedMonthlyTotal'] as num?)?.toDouble();
+    final double? allIn = (data['allInMonthlyEstimate'] as num?)?.toDouble()
+        ?? (data['typicalMonthlyTotal'] as num?)?.toDouble();
+    if (guaranteed != null && guaranteed > 0) guaranteedMonthlyPayController.text = _fmtNum(guaranteed);
+    if (allIn != null && allIn > 0) allInMonthlyEstimateController.text = _fmtNum(allIn);
     update();
   }
 
@@ -138,8 +142,8 @@ class SubmitSalaryController extends GetxController {
   void onClose() {
     baseSalaryController.dispose();
     baseController.dispose();
-    fixedMonthlyTotalController.dispose();
-    typicalMonthlyTotalController.dispose();
+    guaranteedMonthlyPayController.dispose();
+    allInMonthlyEstimateController.dispose();
     super.onClose();
   }
 
@@ -200,8 +204,8 @@ class SubmitSalaryController extends GetxController {
             : selectedBase.value,
         currency: selectedCurrency.value,
         existingDocId: existingDocId,
-        fixedMonthlyTotal: double.tryParse(fixedMonthlyTotalController.text),
-        typicalMonthlyTotal: double.tryParse(typicalMonthlyTotalController.text),
+        guaranteedMonthlyPay: double.tryParse(guaranteedMonthlyPayController.text),
+        allInMonthlyEstimate: double.tryParse(allInMonthlyEstimateController.text),
         amountType: selectedAmountType.value.isEmpty ? null : selectedAmountType.value,
       );
       return true;
@@ -431,29 +435,69 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                       decimal: true,
                       onChanged: (_) => c.update(),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
 
-                    // Other fixed monthly (optional)
-                    const _FieldLabel('Other Fixed Monthly (optional)'),
-                    const _SubLabel('Any guaranteed monthly allowances e.g. housing, per diem, command bonus, seniority bonus'),
+                    // Monthly Guaranteed Pay (required)
+                    _FieldLabelWithInfo(
+                      'Monthly Guaranteed Pay',
+                      info: 'Include everything that is fixed and guaranteed every month. Nothing that varies.',
+                    ),
+                    const _SubLabel('Your total guaranteed monthly income — base salary and anything else that stays the same every month, no matter how much you fly.'),
                     _NumberField(
-                      controller: c.fixedMonthlyTotalController,
-                      hint: 'Enter fixed monthly total',
+                      controller: c.guaranteedMonthlyPayController,
+                      hint: 'Enter guaranteed monthly pay',
                       decimal: true,
                       onChanged: (_) => c.update(),
                     ),
                     const SizedBox(height: 16),
 
-                    // Typical monthly total (optional)
-                    const _FieldLabel('Typical Monthly Total (optional)'),
-                    const _SubLabel('Your own estimate of what you typically take home per month'),
+                    // Monthly All-In Estimate (optional)
+                    _FieldLabelWithInfo(
+                      'Monthly All-In Estimate (optional)',
+                      info: 'Think across all 12 months and divide by 12. Seasons vary — this is your ballpark total.\n\nWhat varies month to month:\n• Per diem\n• Block hours\n• Sector pay\n• Overtime\n• Productivity bonuses',
+                    ),
+                    const _SubLabel('We automatically include your guaranteed pay. Just add what varies month to month — your average across a full year.'),
                     _NumberField(
-                      controller: c.typicalMonthlyTotalController,
-                      hint: 'Enter typical monthly total',
+                      controller: c.allInMonthlyEstimateController,
+                      hint: 'Enter all-in monthly estimate',
                       decimal: true,
                       onChanged: (_) => c.update(),
                     ),
-                    const SizedBox(height: 32),
+
+                    // Live calculator
+                    Builder(builder: (BuildContext ctx) {
+                      final double? guaranteed = double.tryParse(c.guaranteedMonthlyPayController.text);
+                      if (guaranteed == null || guaranteed <= 0) return const SizedBox(height: 32);
+                      final double? allIn = double.tryParse(c.allInMonthlyEstimateController.text);
+                      final double variable = (allIn != null && allIn > guaranteed) ? allIn - guaranteed : 0;
+                      final String cur = c.selectedCurrency.value.isEmpty ? '' : ' ${c.selectedCurrency.value}';
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 12, bottom: 32),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: AppColors.bgCard,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              _CalcRow('Guaranteed', guaranteed, cur),
+                              if (variable > 0) ...<Widget>[
+                                const SizedBox(height: 6),
+                                _CalcRow('+ Variable', variable, cur),
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 8),
+                                  child: Divider(color: AppColors.border, height: 1),
+                                ),
+                                _CalcRow('≈ Total / month', guaranteed + variable, cur, isTotal: true),
+                              ],
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
 
                     // Submit button
                     Obx(() => SizedBox(
@@ -583,8 +627,8 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
         'currency': c.selectedCurrency.value,
         'baseSalary': double.tryParse(c.baseSalaryController.text) ?? 0.0,
         'seniority': int.tryParse(c.selectedSeniority.value) ?? 0,
-        'fixedMonthlyTotal': double.tryParse(c.fixedMonthlyTotalController.text),
-        'typicalMonthlyTotal': double.tryParse(c.typicalMonthlyTotalController.text),
+        'guaranteedMonthlyPay': double.tryParse(c.guaranteedMonthlyPayController.text),
+        'allInMonthlyEstimate': double.tryParse(c.allInMonthlyEstimateController.text),
         'amountType': c.selectedAmountType.value,
         'isUpdate': widget.existingDocId != null,
       };
@@ -623,8 +667,8 @@ class SubmitSalaryConfirmScreen extends StatelessWidget {
     final double baseSalary = data['baseSalary'] as double;
     final int seniority = data['seniority'] as int;
     final bool isUpdate = data['isUpdate'] as bool;
-    final double? fixedMonthlyTotal = data['fixedMonthlyTotal'] as double?;
-    final double? typicalMonthlyTotal = data['typicalMonthlyTotal'] as double?;
+    final double? guaranteedMonthlyPay = data['guaranteedMonthlyPay'] as double?;
+    final double? allInMonthlyEstimate = data['allInMonthlyEstimate'] as double?;
 
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
@@ -703,7 +747,7 @@ class SubmitSalaryConfirmScreen extends StatelessWidget {
                                     'Base Salary',
                                     style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                                   ),
-                                  if (fixedMonthlyTotal != null) ...<Widget>[
+                                  if (guaranteedMonthlyPay != null) ...<Widget>[
                                     const SizedBox(height: 12),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -713,12 +757,12 @@ class SubmitSalaryConfirmScreen extends StatelessWidget {
                                         border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
                                       ),
                                       child: Text(
-                                        'Other Fixed  ${_fmt(fixedMonthlyTotal)} $currency',
+                                        'Guaranteed  ${_fmt(guaranteedMonthlyPay)} $currency',
                                         style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
                                       ),
                                     ),
                                   ],
-                                  if (typicalMonthlyTotal != null) ...<Widget>[
+                                  if (allInMonthlyEstimate != null) ...<Widget>[
                                     const SizedBox(height: 6),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -728,7 +772,7 @@ class SubmitSalaryConfirmScreen extends StatelessWidget {
                                         border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
                                       ),
                                       child: Text(
-                                        'Typical  ~${_fmt(typicalMonthlyTotal)} $currency',
+                                        'All-In  ~${_fmt(allInMonthlyEstimate)} $currency',
                                         style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
                                       ),
                                     ),
@@ -1409,6 +1453,81 @@ class _AirlineSearchSheetState extends State<_AirlineSearchSheet> {
       ),
     );
   }
+}
+
+class _FieldLabelWithInfo extends StatelessWidget {
+  final String text;
+  final String info;
+  const _FieldLabelWithInfo(this.text, {required this.info});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Row(
+      children: <Widget>[
+        Text(
+          text,
+          style: const TextStyle(color: AppColors.textMuted, fontSize: 13, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(width: 4),
+        GestureDetector(
+          onTap: () => Get.dialog<void>(
+            AlertDialog(
+              backgroundColor: AppColors.bgCard,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              content: Text(
+                info,
+                style: const TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.5),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: Get.back,
+                  child: const Text('Got it', style: TextStyle(color: AppColors.accent)),
+                ),
+              ],
+            ),
+          ),
+          child: const Icon(Icons.info_outline, color: AppColors.textMuted, size: 15),
+        ),
+      ],
+    ),
+  );
+}
+
+class _CalcRow extends StatelessWidget {
+  final String label;
+  final double amount;
+  final String currency;
+  final bool isTotal;
+  const _CalcRow(this.label, this.amount, this.currency, {this.isTotal = false});
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: <Widget>[
+      Text(
+        label,
+        style: TextStyle(
+          color: isTotal ? AppColors.textSecondary : AppColors.textMuted,
+          fontSize: isTotal ? 13 : 12,
+          fontWeight: isTotal ? FontWeight.w600 : FontWeight.normal,
+        ),
+      ),
+      Text(
+        '${isTotal ? '~' : ''}${_fmt(amount)}$currency',
+        style: TextStyle(
+          color: isTotal ? AppColors.accent : AppColors.textSecondary,
+          fontSize: isTotal ? 13 : 12,
+          fontWeight: isTotal ? FontWeight.w600 : FontWeight.normal,
+        ),
+      ),
+    ],
+  );
+
+  String _fmt(double v) => v.truncate().toString().replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
+    (Match m) => ',',
+  );
 }
 
 class _FieldLabel extends StatelessWidget {

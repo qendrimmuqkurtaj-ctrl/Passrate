@@ -297,8 +297,8 @@ class FirebaseService {
     required String base,
     required String currency,
     String? existingDocId,
-    double? fixedMonthlyTotal,
-    double? typicalMonthlyTotal,
+    double? guaranteedMonthlyPay,
+    double? allInMonthlyEstimate,
     String? amountType,
   }) async {
     final Map<String, dynamic> data = <String, dynamic>{
@@ -314,8 +314,8 @@ class FirebaseService {
       'base': base,
       'currency': currency,
       'createdAt': FieldValue.serverTimestamp(),
-      if (fixedMonthlyTotal != null) 'fixedMonthlyTotal': fixedMonthlyTotal,
-      if (typicalMonthlyTotal != null) 'typicalMonthlyTotal': typicalMonthlyTotal,
+      if (guaranteedMonthlyPay != null) 'guaranteedMonthlyPay': guaranteedMonthlyPay,
+      if (allInMonthlyEstimate != null) 'allInMonthlyEstimate': allInMonthlyEstimate,
       if (amountType != null && amountType.isNotEmpty) 'amountType': amountType,
     };
     final DocumentReference docRef;

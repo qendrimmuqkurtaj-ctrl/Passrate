@@ -82,8 +82,8 @@ class SalaryController extends GetxController {
     final String sort = sortBy.value;
     list.sort((Map<String, dynamic> a, Map<String, dynamic> b) {
       if (sort == 'fixed') {
-        final double? aVal = (a['fixedMonthlyTotal'] as num?)?.toDouble();
-        final double? bVal = (b['fixedMonthlyTotal'] as num?)?.toDouble();
+        final double? aVal = (a['guaranteedMonthlyPay'] as num?)?.toDouble() ?? (a['fixedMonthlyTotal'] as num?)?.toDouble();
+        final double? bVal = (b['guaranteedMonthlyPay'] as num?)?.toDouble() ?? (b['fixedMonthlyTotal'] as num?)?.toDouble();
         if (aVal == null && bVal == null) return 0;
         if (aVal == null) return 1;
         if (bVal == null) return -1;
@@ -91,8 +91,8 @@ class SalaryController extends GetxController {
             toEur(aVal, a['currency'] as String? ?? ''));
       }
       if (sort == 'typical') {
-        final double? aVal = (a['typicalMonthlyTotal'] as num?)?.toDouble();
-        final double? bVal = (b['typicalMonthlyTotal'] as num?)?.toDouble();
+        final double? aVal = (a['allInMonthlyEstimate'] as num?)?.toDouble() ?? (a['typicalMonthlyTotal'] as num?)?.toDouble();
+        final double? bVal = (b['allInMonthlyEstimate'] as num?)?.toDouble() ?? (b['typicalMonthlyTotal'] as num?)?.toDouble();
         if (aVal == null && bVal == null) return 0;
         if (aVal == null) return 1;
         if (bVal == null) return -1;
@@ -912,13 +912,13 @@ class _SalaryScreenState extends State<SalaryScreen> {
                     ),
                     const SizedBox(width: 6),
                     _SortChip(
-                      label: 'Fixed Total',
+                      label: 'Guaranteed',
                       selected: c.sortBy.value == 'fixed',
                       onTap: () => c.sortBy.value = 'fixed',
                     ),
                     const SizedBox(width: 6),
                     _SortChip(
-                      label: 'Typical Total',
+                      label: 'All-In',
                       selected: c.sortBy.value == 'typical',
                       onTap: () => c.sortBy.value = 'typical',
                     ),
@@ -1716,10 +1716,12 @@ class _SalaryCard extends StatelessWidget {
     final String base = salary['base'] as String? ?? '-';
     final String currency = salary['currency'] as String? ?? '';
     final double eurBase = _toEur(baseSalary, currency, rates);
-    final double? fixedMonthlyTotal = (salary['fixedMonthlyTotal'] as num?)?.toDouble();
-    final double? typicalMonthlyTotal = (salary['typicalMonthlyTotal'] as num?)?.toDouble();
-    final double? eurFixed = fixedMonthlyTotal != null ? _toEur(fixedMonthlyTotal, currency, rates) : null;
-    final double? eurTypical = typicalMonthlyTotal != null ? _toEur(typicalMonthlyTotal, currency, rates) : null;
+    final double? guaranteedMonthlyPay = (salary['guaranteedMonthlyPay'] as num?)?.toDouble()
+        ?? (salary['fixedMonthlyTotal'] as num?)?.toDouble();
+    final double? allInMonthlyEstimate = (salary['allInMonthlyEstimate'] as num?)?.toDouble()
+        ?? (salary['typicalMonthlyTotal'] as num?)?.toDouble();
+    final double? eurGuaranteed = guaranteedMonthlyPay != null ? _toEur(guaranteedMonthlyPay, currency, rates) : null;
+    final double? eurAllIn = allInMonthlyEstimate != null ? _toEur(allInMonthlyEstimate, currency, rates) : null;
     final String amountType = salary['amountType'] as String? ?? '';
 
     return Container(
@@ -1801,7 +1803,7 @@ class _SalaryCard extends StatelessWidget {
                               '≈ ${_fmt(eurBase)} EUR',
                               style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
                             ),
-                          if (fixedMonthlyTotal != null) ...<Widget>[
+                          if (guaranteedMonthlyPay != null) ...<Widget>[
                             const SizedBox(height: 12),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -1813,21 +1815,21 @@ class _SalaryCard extends StatelessWidget {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: <Widget>[
-                                  const Text('Other Fixed  ', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                                  const Text('Guaranteed  ', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                                   Text(
-                                    '${_fmt(fixedMonthlyTotal)} $currency',
+                                    '${_fmt(guaranteedMonthlyPay)} $currency',
                                     style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
                                   ),
-                                  if (currency != 'EUR' && eurFixed != null && eurFixed > 0)
+                                  if (currency != 'EUR' && eurGuaranteed != null && eurGuaranteed > 0)
                                     Text(
-                                      '  ≈ ${_fmt(eurFixed)} EUR',
+                                      '  ≈ ${_fmt(eurGuaranteed)} EUR',
                                       style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                                     ),
                                 ],
                               ),
                             ),
                           ],
-                          if (typicalMonthlyTotal != null) ...<Widget>[
+                          if (allInMonthlyEstimate != null) ...<Widget>[
                             const SizedBox(height: 6),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -1839,14 +1841,14 @@ class _SalaryCard extends StatelessWidget {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: <Widget>[
-                                  const Text('Typical  ~', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                                  const Text('All-In  ~', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                                   Text(
-                                    '${_fmt(typicalMonthlyTotal)} $currency',
+                                    '${_fmt(allInMonthlyEstimate)} $currency',
                                     style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
                                   ),
-                                  if (currency != 'EUR' && eurTypical != null && eurTypical > 0)
+                                  if (currency != 'EUR' && eurAllIn != null && eurAllIn > 0)
                                     Text(
-                                      '  ≈ ${_fmt(eurTypical)} EUR',
+                                      '  ≈ ${_fmt(eurAllIn)} EUR',
                                       style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                                     ),
                                 ],
