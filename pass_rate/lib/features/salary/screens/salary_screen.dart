@@ -1853,7 +1853,7 @@ class _SalaryCard extends StatelessWidget {
                       child: Column(
                         children: <Widget>[
                           Text(
-                            '${_fmt(primarySalary)} $currency',
+                            '${_fmt(primarySalary)} $currency / month',
                             style: const TextStyle(
                               color: AppColors.accent,
                               fontSize: 40,
@@ -1861,6 +1861,11 @@ class _SalaryCard extends StatelessWidget {
                               letterSpacing: -1,
                               height: 1,
                             ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${_fmt(primarySalary * 12)} $currency / year',
+                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
                           ),
                           const SizedBox(height: 5),
                           const Text(

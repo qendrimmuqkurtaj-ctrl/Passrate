@@ -452,6 +452,7 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                       hint: 'Enter guaranteed monthly pay',
                       decimal: true,
                       onChanged: (_) => c.update(),
+                      suffixText: '/ month',
                     ),
                     const SizedBox(height: 16),
 
@@ -466,6 +467,7 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                       hint: 'Enter average monthly pay',
                       decimal: true,
                       onChanged: (_) => c.update(),
+                      suffixText: '/ month',
                     ),
 
                     // Live calculator
@@ -1046,12 +1048,14 @@ class _NumberField extends StatelessWidget {
   final String hint;
   final bool decimal;
   final ValueChanged<String> onChanged;
+  final String? suffixText;
 
   const _NumberField({
     required this.controller,
     required this.hint,
     this.decimal = false,
     required this.onChanged,
+    this.suffixText,
   });
 
   @override
@@ -1079,6 +1083,8 @@ class _NumberField extends StatelessWidget {
           hintText: hint,
           hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
           border: InputBorder.none,
+          suffixText: suffixText,
+          suffixStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
         ),
         onChanged: onChanged,
       ),
