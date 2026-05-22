@@ -292,12 +292,11 @@ class FirebaseService {
     required int seniorityYears,
     required String aircraftType,
     required String contractType,
-    required double baseSalary,
+    required double guaranteedMonthlyPay,
     required String country,
     required String base,
     required String currency,
     String? existingDocId,
-    double? guaranteedMonthlyPay,
     double? allInMonthlyEstimate,
     String? amountType,
     int? totalFlightHours,
@@ -310,12 +309,11 @@ class FirebaseService {
       'seniorityYears': seniorityYears,
       'aircraftType': aircraftType,
       'contractType': contractType,
-      'baseSalary': baseSalary,
+      'guaranteedMonthlyPay': guaranteedMonthlyPay,
       'country': country,
       'base': base,
       'currency': currency,
       'createdAt': FieldValue.serverTimestamp(),
-      if (guaranteedMonthlyPay != null) 'guaranteedMonthlyPay': guaranteedMonthlyPay,
       if (allInMonthlyEstimate != null) 'allInMonthlyEstimate': allInMonthlyEstimate,
       if (amountType != null && amountType.isNotEmpty) 'amountType': amountType,
       if (totalFlightHours != null) 'totalFlightHours': totalFlightHours,
@@ -332,7 +330,7 @@ class FirebaseService {
       airlineName: airlineName,
       rank: rank,
       aircraftType: aircraftType,
-      baseSalary: baseSalary,
+      guaranteedMonthlyPay: guaranteedMonthlyPay,
       currency: currency,
       currentDocId: docRef.id,
       amountType: amountType ?? '',
@@ -398,7 +396,7 @@ class FirebaseService {
     required String airlineName,
     required String rank,
     required String aircraftType,
-    required double baseSalary,
+    required double guaranteedMonthlyPay,
     required String currency,
     required String currentDocId,
     required String amountType,
@@ -408,9 +406,9 @@ class FirebaseService {
     // Skip all EUR-conversion checks if rates are unavailable.
     if (rates.isEmpty && currency != 'EUR') return null;
 
-    final double baseSalaryEur = _toEurAmount(baseSalary, currency, rates);
+    final double guaranteedEur = _toEurAmount(guaranteedMonthlyPay, currency, rates);
 
-    if (baseSalaryEur < 1000) return 'Salary unusually low (under 1,000 EUR)';
+    if (guaranteedEur < 1000) return 'Salary unusually low (under 1,000 EUR)';
 
     final QuerySnapshot snap = await _db
         .collection('salaries')
@@ -429,11 +427,12 @@ class FirebaseService {
       final Iterable<double> foSalaries = others
           .where((Map<String, dynamic> s) => s['rank'] == 'FO')
           .map((Map<String, dynamic> s) => _toEurAmount(
-                (s['baseSalary'] as num?)?.toDouble() ?? 0,
+                (s['guaranteedMonthlyPay'] as num?)?.toDouble() ??
+                    (s['baseSalary'] as num?)?.toDouble() ?? 0,
                 s['currency'] as String? ?? 'EUR',
                 rates,
               ));
-      if (foSalaries.any((double fo) => baseSalaryEur > fo)) {
+      if (foSalaries.any((double fo) => guaranteedEur > fo)) {
         return 'SO salary higher than FO at same airline';
       }
     }
@@ -442,11 +441,12 @@ class FirebaseService {
       final Iterable<double> foSalaries = others
           .where((Map<String, dynamic> s) => s['rank'] == 'FO')
           .map((Map<String, dynamic> s) => _toEurAmount(
-                (s['baseSalary'] as num?)?.toDouble() ?? 0,
+                (s['guaranteedMonthlyPay'] as num?)?.toDouble() ??
+                    (s['baseSalary'] as num?)?.toDouble() ?? 0,
                 s['currency'] as String? ?? 'EUR',
                 rates,
               ));
-      if (foSalaries.any((double fo) => baseSalaryEur < fo)) {
+      if (foSalaries.any((double fo) => guaranteedEur < fo)) {
         return 'Captain salary lower than FO at same airline';
       }
     }
@@ -454,14 +454,15 @@ class FirebaseService {
     final List<double> peerSalaries = others
         .where((Map<String, dynamic> s) => s['rank'] == rank && s['aircraftType'] == aircraftType)
         .map((Map<String, dynamic> s) => _toEurAmount(
-              (s['baseSalary'] as num?)?.toDouble() ?? 0,
+              (s['guaranteedMonthlyPay'] as num?)?.toDouble() ??
+                  (s['baseSalary'] as num?)?.toDouble() ?? 0,
               s['currency'] as String? ?? 'EUR',
               rates,
             ))
         .toList();
     if (peerSalaries.isNotEmpty) {
       final double avg = peerSalaries.reduce((double a, double b) => a + b) / peerSalaries.length;
-      if (avg > 0 && (baseSalaryEur - avg).abs() / avg > 0.30) {
+      if (avg > 0 && (guaranteedEur - avg).abs() / avg > 0.30) {
         return 'Salary deviates more than 30% from peers';
       }
     }

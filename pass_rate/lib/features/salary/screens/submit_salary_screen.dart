@@ -36,7 +36,6 @@ class SubmitSalaryController extends GetxController {
   final RxString selectedAmountType = ''.obs;
 
   final RxString selectedSeniority = ''.obs;
-  final TextEditingController baseSalaryController = TextEditingController();
   final TextEditingController baseController = TextEditingController();
   final TextEditingController guaranteedMonthlyPayController = TextEditingController();
   final TextEditingController allInMonthlyEstimateController = TextEditingController();
@@ -53,7 +52,6 @@ class SubmitSalaryController extends GetxController {
       selectedSeniority.value.isNotEmpty &&
       selectedAircraftType.value.isNotEmpty &&
       selectedContractType.value.isNotEmpty &&
-      baseSalaryController.text.isNotEmpty &&
       guaranteedMonthlyPayController.text.isNotEmpty &&
       selectedCountry.value.isNotEmpty &&
       _baseCompleted &&
@@ -75,7 +73,6 @@ class SubmitSalaryController extends GetxController {
   bool get step3Done =>
       selectedCurrency.value.isNotEmpty &&
       selectedAmountType.value.isNotEmpty &&
-      baseSalaryController.text.isNotEmpty &&
       guaranteedMonthlyPayController.text.isNotEmpty;
 
   Map<String, dynamic>? _prefillData;
@@ -110,10 +107,9 @@ class SubmitSalaryController extends GetxController {
     final String base = data['base'] as String? ?? '';
     selectedBase.value = base;
     baseController.text = base;
-    final double baseSalary = (data['baseSalary'] as num?)?.toDouble() ?? 0;
-    if (baseSalary > 0) baseSalaryController.text = _fmtNum(baseSalary);
     final double? guaranteed = (data['guaranteedMonthlyPay'] as num?)?.toDouble()
-        ?? (data['fixedMonthlyTotal'] as num?)?.toDouble();
+        ?? (data['fixedMonthlyTotal'] as num?)?.toDouble()
+        ?? (data['baseSalary'] as num?)?.toDouble();
     final double? allIn = (data['allInMonthlyEstimate'] as num?)?.toDouble()
         ?? (data['typicalMonthlyTotal'] as num?)?.toDouble();
     if (guaranteed != null && guaranteed > 0) guaranteedMonthlyPayController.text = _fmtNum(guaranteed);
@@ -143,7 +139,6 @@ class SubmitSalaryController extends GetxController {
 
   @override
   void onClose() {
-    baseSalaryController.dispose();
     baseController.dispose();
     guaranteedMonthlyPayController.dispose();
     allInMonthlyEstimateController.dispose();
@@ -201,14 +196,13 @@ class SubmitSalaryController extends GetxController {
         seniorityYears: int.tryParse(selectedSeniority.value) ?? 0,
         aircraftType: selectedAircraftType.value,
         contractType: selectedContractType.value,
-        baseSalary: double.tryParse(baseSalaryController.text) ?? 0,
+        guaranteedMonthlyPay: double.tryParse(guaranteedMonthlyPayController.text) ?? 0,
         country: selectedCountry.value,
         base: selectedCountry.value == 'Other'
             ? baseController.text.trim()
             : selectedBase.value,
         currency: selectedCurrency.value,
         existingDocId: existingDocId,
-        guaranteedMonthlyPay: double.tryParse(guaranteedMonthlyPayController.text),
         allInMonthlyEstimate: double.tryParse(allInMonthlyEstimateController.text),
         amountType: selectedAmountType.value.isEmpty ? null : selectedAmountType.value,
         totalFlightHours: int.tryParse(totalFlightHoursController.text),
@@ -325,7 +319,7 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                     const SizedBox(height: 16),
 
                     // Total Flight Hours (optional)
-                    const _FieldLabel('Total Flight Hours (optional)'),
+                    const _FieldLabel('Total Flight Hours'),
                     const _SubLabel('Your total accumulated flight hours'),
                     _NumberField(
                       controller: c.totalFlightHoursController,
@@ -443,16 +437,6 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                     )),
                     const SizedBox(height: 16),
 
-                    // Base salary
-                    const _FieldLabel('Base Salary'),
-                    _NumberField(
-                      controller: c.baseSalaryController,
-                      hint: 'Enter base salary',
-                      decimal: true,
-                      onChanged: (_) => c.update(),
-                    ),
-                    const SizedBox(height: 20),
-
                     // Monthly Guaranteed Pay (required)
                     _FieldLabelWithInfo(
                       'Monthly Guaranteed Pay',
@@ -467,15 +451,15 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Monthly All-In Estimate (optional)
+                    // Average Monthly Pay (optional)
                     _FieldLabelWithInfo(
-                      'Monthly All-In Estimate (optional)',
-                      info: 'Think across all 12 months and divide by 12. Seasons vary — this is your ballpark total.\n\nWhat varies month to month:\n• Per diem\n• Block hours\n• Sector pay\n• Overtime\n• Productivity bonuses',
+                      'Average Monthly Pay',
+                      info: 'Think across all 12 months and divide by 12.\nSeasons vary — this is your realistic average.\n\nInclude everything:\n• Per diem\n• Block hours\n• Sector pay\n• Overtime\n• Productivity bonuses',
                     ),
-                    const _SubLabel('We automatically include your guaranteed pay. Just add what varies month to month — your average across a full year.'),
+                    const _SubLabel('What you typically receive in your bank account per month — averaged across a full year including all pay.'),
                     _NumberField(
                       controller: c.allInMonthlyEstimateController,
-                      hint: 'Enter all-in monthly estimate',
+                      hint: 'Enter average monthly pay',
                       decimal: true,
                       onChanged: (_) => c.update(),
                     ),
@@ -483,9 +467,10 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                     // Live calculator
                     Builder(builder: (BuildContext ctx) {
                       final double? guaranteed = double.tryParse(c.guaranteedMonthlyPayController.text);
-                      if (guaranteed == null || guaranteed <= 0) return const SizedBox(height: 32);
+                      if (guaranteed == null || guaranteed <= 0) return const SizedBox.shrink();
                       final double? allIn = double.tryParse(c.allInMonthlyEstimateController.text);
-                      final double variable = (allIn != null && allIn > guaranteed) ? allIn - guaranteed : 0;
+                      final bool hasVariable = allIn != null && allIn > guaranteed;
+                      final double variable = hasVariable ? allIn - guaranteed : 0;
                       final String cur = c.selectedCurrency.value.isEmpty ? '' : ' ${c.selectedCurrency.value}';
                       return Padding(
                         padding: const EdgeInsets.only(top: 12, bottom: 32),
@@ -500,14 +485,14 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
                               _CalcRow('Guaranteed', guaranteed, cur),
-                              if (variable > 0) ...<Widget>[
+                              if (hasVariable) ...<Widget>[
                                 const SizedBox(height: 6),
                                 _CalcRow('+ Variable', variable, cur),
                                 const Padding(
                                   padding: EdgeInsets.symmetric(vertical: 8),
                                   child: Divider(color: AppColors.border, height: 1),
                                 ),
-                                _CalcRow('≈ Total / month', guaranteed + variable, cur, isTotal: true),
+                                _CalcRow('≈ Total / month', allIn, cur, isTotal: true),
                               ],
                             ],
                           ),
@@ -641,7 +626,6 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
             ? c.baseController.text.trim()
             : c.selectedBase.value,
         'currency': c.selectedCurrency.value,
-        'baseSalary': double.tryParse(c.baseSalaryController.text) ?? 0.0,
         'seniority': int.tryParse(c.selectedSeniority.value) ?? 0,
         'guaranteedMonthlyPay': double.tryParse(c.guaranteedMonthlyPayController.text),
         'allInMonthlyEstimate': double.tryParse(c.allInMonthlyEstimateController.text),
@@ -681,11 +665,10 @@ class SubmitSalaryConfirmScreen extends StatelessWidget {
     final String country = data['country'] as String;
     final String base = data['base'] as String;
     final String currency = data['currency'] as String;
-    final double baseSalary = data['baseSalary'] as double;
     final int seniority = data['seniority'] as int;
     final bool isUpdate = data['isUpdate'] as bool;
     final int? totalFlightHours = data['totalFlightHours'] as int?;
-    final double? guaranteedMonthlyPay = data['guaranteedMonthlyPay'] as double?;
+    final double guaranteedMonthlyPay = (data['guaranteedMonthlyPay'] as double?) ?? 0.0;
     final double? allInMonthlyEstimate = data['allInMonthlyEstimate'] as double?;
 
     return Scaffold(
@@ -751,7 +734,7 @@ class SubmitSalaryConfirmScreen extends StatelessWidget {
                               child: Column(
                                 children: <Widget>[
                                   Text(
-                                    '${_fmt(baseSalary)} $currency',
+                                    '${_fmt(guaranteedMonthlyPay)} $currency',
                                     style: const TextStyle(
                                       color: AppColors.accent,
                                       fontSize: 44,
@@ -762,10 +745,10 @@ class SubmitSalaryConfirmScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 5),
                                   const Text(
-                                    'Base Salary',
+                                    'Monthly Guaranteed Pay',
                                     style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                                   ),
-                                  if (guaranteedMonthlyPay != null) ...<Widget>[
+                                  if (allInMonthlyEstimate != null) ...<Widget>[
                                     const SizedBox(height: 12),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -775,22 +758,7 @@ class SubmitSalaryConfirmScreen extends StatelessWidget {
                                         border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
                                       ),
                                       child: Text(
-                                        'Guaranteed  ${_fmt(guaranteedMonthlyPay)} $currency',
-                                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
-                                      ),
-                                    ),
-                                  ],
-                                  if (allInMonthlyEstimate != null) ...<Widget>[
-                                    const SizedBox(height: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.accent.withValues(alpha: 0.10),
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
-                                      ),
-                                      child: Text(
-                                        'All-In  ~${_fmt(allInMonthlyEstimate)} $currency',
+                                        'Avg Monthly  ~${_fmt(allInMonthlyEstimate)} $currency',
                                         style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
                                       ),
                                     ),

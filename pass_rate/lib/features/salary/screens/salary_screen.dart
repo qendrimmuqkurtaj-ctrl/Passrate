@@ -95,15 +95,6 @@ class SalaryController extends GetxController {
     }
     final String sort = sortBy.value;
     list.sort((Map<String, dynamic> a, Map<String, dynamic> b) {
-      if (sort == 'fixed') {
-        final double? aVal = (a['guaranteedMonthlyPay'] as num?)?.toDouble() ?? (a['fixedMonthlyTotal'] as num?)?.toDouble();
-        final double? bVal = (b['guaranteedMonthlyPay'] as num?)?.toDouble() ?? (b['fixedMonthlyTotal'] as num?)?.toDouble();
-        if (aVal == null && bVal == null) return 0;
-        if (aVal == null) return 1;
-        if (bVal == null) return -1;
-        return toEur(bVal, b['currency'] as String? ?? '').compareTo(
-            toEur(aVal, a['currency'] as String? ?? ''));
-      }
       if (sort == 'typical') {
         final double? aVal = (a['allInMonthlyEstimate'] as num?)?.toDouble() ?? (a['typicalMonthlyTotal'] as num?)?.toDouble();
         final double? bVal = (b['allInMonthlyEstimate'] as num?)?.toDouble() ?? (b['typicalMonthlyTotal'] as num?)?.toDouble();
@@ -113,8 +104,13 @@ class SalaryController extends GetxController {
         return toEur(bVal, b['currency'] as String? ?? '').compareTo(
             toEur(aVal, a['currency'] as String? ?? ''));
       }
-      return toEur((b['baseSalary'] as num?)?.toDouble() ?? 0, b['currency'] as String? ?? '').compareTo(
-          toEur((a['baseSalary'] as num?)?.toDouble() ?? 0, a['currency'] as String? ?? ''));
+      return toEur(
+        (b['guaranteedMonthlyPay'] as num?)?.toDouble() ?? (b['baseSalary'] as num?)?.toDouble() ?? 0,
+        b['currency'] as String? ?? '',
+      ).compareTo(toEur(
+        (a['guaranteedMonthlyPay'] as num?)?.toDouble() ?? (a['baseSalary'] as num?)?.toDouble() ?? 0,
+        a['currency'] as String? ?? '',
+      ));
     });
     return list;
   }
@@ -173,8 +169,14 @@ class SalaryController extends GetxController {
       return false;
     }).toList()
       ..sort((Map<String, dynamic> a, Map<String, dynamic> b) {
-        final double aEur = toEur((a['baseSalary'] as num?)?.toDouble() ?? 0, a['currency'] as String? ?? '');
-        final double bEur = toEur((b['baseSalary'] as num?)?.toDouble() ?? 0, b['currency'] as String? ?? '');
+        final double aEur = toEur(
+          (a['guaranteedMonthlyPay'] as num?)?.toDouble() ?? (a['fixedMonthlyTotal'] as num?)?.toDouble() ?? (a['baseSalary'] as num?)?.toDouble() ?? 0,
+          a['currency'] as String? ?? '',
+        );
+        final double bEur = toEur(
+          (b['guaranteedMonthlyPay'] as num?)?.toDouble() ?? (b['fixedMonthlyTotal'] as num?)?.toDouble() ?? (b['baseSalary'] as num?)?.toDouble() ?? 0,
+          b['currency'] as String? ?? '',
+        );
         return bEur.compareTo(aEur);
       });
 
@@ -191,7 +193,9 @@ class SalaryController extends GetxController {
       if (_normAmtType(s['amountType'] as String?) != myNormAmt) continue;
       final String country = s['country'] as String? ?? '';
       if (country.isEmpty) continue;
-      final double sal = (s['baseSalary'] as num?)?.toDouble() ?? 0;
+      final double sal = (s['guaranteedMonthlyPay'] as num?)?.toDouble()
+          ?? (s['fixedMonthlyTotal'] as num?)?.toDouble()
+          ?? (s['baseSalary'] as num?)?.toDouble() ?? 0;
       final String cur = s['currency'] as String? ?? '';
       final double eur = toEur(sal, cur);
       final Map<String, dynamic>? current = bestByCountry[country];
@@ -199,14 +203,18 @@ class SalaryController extends GetxController {
         bestByCountry[country] = s;
       } else {
         final double currentEur = toEur(
-          (current['baseSalary'] as num?)?.toDouble() ?? 0,
+          (current['guaranteedMonthlyPay'] as num?)?.toDouble()
+              ?? (current['fixedMonthlyTotal'] as num?)?.toDouble()
+              ?? (current['baseSalary'] as num?)?.toDouble() ?? 0,
           current['currency'] as String? ?? '',
         );
         if (eur > currentEur) bestByCountry[country] = s;
       }
     }
     final List<Map<String, dynamic>> result = bestByCountry.entries.map((MapEntry<String, Map<String, dynamic>> e) {
-      final double sal = (e.value['baseSalary'] as num?)?.toDouble() ?? 0;
+      final double sal = (e.value['guaranteedMonthlyPay'] as num?)?.toDouble()
+          ?? (e.value['fixedMonthlyTotal'] as num?)?.toDouble()
+          ?? (e.value['baseSalary'] as num?)?.toDouble() ?? 0;
       final String cur = e.value['currency'] as String? ?? '';
       return <String, dynamic>{
         'country': e.key,
@@ -470,7 +478,9 @@ class SalaryController extends GetxController {
       if (grossEntries.length >= 3) {
         final List<double> eurSalaries = grossEntries
             .map((Map<String, dynamic> s) => toEur(
-                  (s['baseSalary'] as num?)?.toDouble() ?? 0,
+                  (s['guaranteedMonthlyPay'] as num?)?.toDouble()
+                      ?? (s['fixedMonthlyTotal'] as num?)?.toDouble()
+                      ?? (s['baseSalary'] as num?)?.toDouble() ?? 0,
                   s['currency'] as String? ?? '',
                 ))
             .where((double v) => v > 0)
@@ -490,7 +500,9 @@ class SalaryController extends GetxController {
       } else if (netEntries.length >= 3) {
         final List<double> eurSalaries = netEntries
             .map((Map<String, dynamic> s) => toEur(
-                  (s['baseSalary'] as num?)?.toDouble() ?? 0,
+                  (s['guaranteedMonthlyPay'] as num?)?.toDouble()
+                      ?? (s['fixedMonthlyTotal'] as num?)?.toDouble()
+                      ?? (s['baseSalary'] as num?)?.toDouble() ?? 0,
                   s['currency'] as String? ?? '',
                 ))
             .where((double v) => v > 0)
@@ -935,15 +947,9 @@ class _SalaryScreenState extends State<SalaryScreen> {
                     ),
                     const SizedBox(width: 8),
                     _SortChip(
-                      label: 'Base',
+                      label: 'Guaranteed',
                       selected: c.sortBy.value == 'base',
                       onTap: () => c.sortBy.value = 'base',
-                    ),
-                    const SizedBox(width: 6),
-                    _SortChip(
-                      label: 'Guaranteed',
-                      selected: c.sortBy.value == 'fixed',
-                      onTap: () => c.sortBy.value = 'fixed',
                     ),
                     const SizedBox(width: 6),
                     _SortChip(
@@ -1365,11 +1371,13 @@ class _PeerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double baseSalary = (salary['baseSalary'] as num?)?.toDouble() ?? 0;
+    final double primarySalary = (salary['guaranteedMonthlyPay'] as num?)?.toDouble()
+        ?? (salary['fixedMonthlyTotal'] as num?)?.toDouble()
+        ?? (salary['baseSalary'] as num?)?.toDouble() ?? 0;
     final String currency = salary['currency'] as String? ?? '';
     final String country = salary['country'] as String? ?? '-';
     final int seniority = (salary['seniorityYears'] as num?)?.toInt() ?? 0;
-    final double eurSalary = _toEur(baseSalary, currency, rates);
+    final double eurSalary = _toEur(primarySalary, currency, rates);
 
     return GestureDetector(
       onTap: onTap,
@@ -1392,7 +1400,7 @@ class _PeerCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text(
-                    '${_fmt(baseSalary)} $currency',
+                    '${_fmt(primarySalary)} $currency',
                     style: const TextStyle(
                       color: AppColors.accent,
                       fontWeight: FontWeight.bold,
@@ -1777,16 +1785,16 @@ class _SalaryCard extends StatelessWidget {
     final int? totalFlightHours = (salary['totalFlightHours'] as num?)?.toInt();
     final String aircraft = salary['aircraftType'] as String? ?? '-';
     final String contract = salary['contractType'] as String? ?? '-';
-    final double baseSalary = (salary['baseSalary'] as num?)?.toDouble() ?? 0;
+    final double primarySalary = (salary['guaranteedMonthlyPay'] as num?)?.toDouble()
+        ?? (salary['fixedMonthlyTotal'] as num?)?.toDouble()
+        ?? (salary['baseSalary'] as num?)?.toDouble()
+        ?? 0;
     final String country = salary['country'] as String? ?? '-';
     final String base = salary['base'] as String? ?? '-';
     final String currency = salary['currency'] as String? ?? '';
-    final double eurBase = _toEur(baseSalary, currency, rates);
-    final double? guaranteedMonthlyPay = (salary['guaranteedMonthlyPay'] as num?)?.toDouble()
-        ?? (salary['fixedMonthlyTotal'] as num?)?.toDouble();
+    final double eurPrimary = _toEur(primarySalary, currency, rates);
     final double? allInMonthlyEstimate = (salary['allInMonthlyEstimate'] as num?)?.toDouble()
         ?? (salary['typicalMonthlyTotal'] as num?)?.toDouble();
-    final double? eurGuaranteed = guaranteedMonthlyPay != null ? _toEur(guaranteedMonthlyPay, currency, rates) : null;
     final double? eurAllIn = allInMonthlyEstimate != null ? _toEur(allInMonthlyEstimate, currency, rates) : null;
     final String amountType = salary['amountType'] as String? ?? '';
 
@@ -1845,7 +1853,7 @@ class _SalaryCard extends StatelessWidget {
                       child: Column(
                         children: <Widget>[
                           Text(
-                            '${_fmt(baseSalary)} $currency',
+                            '${_fmt(primarySalary)} $currency',
                             style: const TextStyle(
                               color: AppColors.accent,
                               fontSize: 40,
@@ -1856,7 +1864,7 @@ class _SalaryCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 5),
                           const Text(
-                            'Base Salary',
+                            'Monthly Guaranteed Pay',
                             style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                           ),
                           if (amountType.isNotEmpty)
@@ -1864,12 +1872,12 @@ class _SalaryCard extends StatelessWidget {
                               amountType,
                               style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
                             ),
-                          if (currency != 'EUR' && eurBase > 0)
+                          if (currency != 'EUR' && eurPrimary > 0)
                             Text(
-                              '≈ ${_fmt(eurBase)} EUR',
+                              '≈ ${_fmt(eurPrimary)} EUR',
                               style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
                             ),
-                          if (guaranteedMonthlyPay != null) ...<Widget>[
+                          if (allInMonthlyEstimate != null) ...<Widget>[
                             const SizedBox(height: 12),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -1881,33 +1889,7 @@ class _SalaryCard extends StatelessWidget {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: <Widget>[
-                                  const Text('Guaranteed  ', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                                  Text(
-                                    '${_fmt(guaranteedMonthlyPay)} $currency',
-                                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
-                                  ),
-                                  if (currency != 'EUR' && eurGuaranteed != null && eurGuaranteed > 0)
-                                    Text(
-                                      '  ≈ ${_fmt(eurGuaranteed)} EUR',
-                                      style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ],
-                          if (allInMonthlyEstimate != null) ...<Widget>[
-                            const SizedBox(height: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: AppColors.accent.withValues(alpha: 0.10),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: <Widget>[
-                                  const Text('All-In  ~', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                                  const Text('Avg Monthly  ~', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                                   Text(
                                     '${_fmt(allInMonthlyEstimate)} $currency',
                                     style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
