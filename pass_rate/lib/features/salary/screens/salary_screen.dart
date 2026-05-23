@@ -1977,6 +1977,10 @@ class _SalaryCard extends StatelessWidget {
         ?? (salary['typicalMonthlyTotal'] as num?)?.toDouble();
     final double? eurAllIn = allInMonthlyEstimate != null ? _toEur(allInMonthlyEstimate, currency, rates) : null;
     final String amountType = salary['amountType'] as String? ?? '';
+    final bool isGross = _normAmtType(amountType) == 'gross';
+    const Color grossColor = Color(0xFF4DB87A);
+    const Color netColor = Color(0xFF5B9CF6);
+    final Color amtColor = isGross ? grossColor : netColor;
 
     return Container(
       clipBehavior: Clip.antiAlias,
@@ -1996,7 +2000,7 @@ class _SalaryCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    // Header
+                    // Header: airline · rank badge · gross/net badge
                     Row(
                       children: <Widget>[
                         Expanded(
@@ -2006,29 +2010,41 @@ class _SalaryCard extends StatelessWidget {
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: AppColors.accent.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: Text(rank, style: const TextStyle(color: AppColors.accent, fontSize: 13, fontWeight: FontWeight.w600)),
+                          child: Text(rank, style: const TextStyle(color: AppColors.accent, fontSize: 12, fontWeight: FontWeight.w600)),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: amtColor.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            isGross ? 'Gross' : 'Net',
+                            style: TextStyle(color: amtColor, fontSize: 11, fontWeight: FontWeight.w600),
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 4),
+                    // Aircraft + experience
                     Text(
-                      '$aircraft · $contract${seniority > 0 ? ' · $seniority yr' : ''}${totalFlightHours != null && totalFlightHours > 0 ? ' · ${_fmt(totalFlightHours.toDouble())} hrs' : ''}',
+                      '$aircraft${seniority > 0 ? ' · $seniority yr' : ''}${totalFlightHours != null && totalFlightHours > 0 ? ' · ${_fmt(totalFlightHours.toDouble())} hrs' : ''}',
                       style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
+                    // Contract + location
                     Text(
-                      '$country · $base',
+                      '$contract · $country · $base',
                       style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
-                    const SizedBox(height: 16),
-                    const Divider(color: AppColors.border, height: 1),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
-                    // Hero salary
+                    // Hero salary (no divider — whitespace provides separation)
                     Center(
                       child: Column(
                         children: <Widget>[
@@ -2036,7 +2052,7 @@ class _SalaryCard extends StatelessWidget {
                             '${_fmt(primarySalary)} $currency / month',
                             style: const TextStyle(
                               color: AppColors.accent,
-                              fontSize: 40,
+                              fontSize: 34,
                               fontWeight: FontWeight.bold,
                               letterSpacing: -1,
                               height: 1,
@@ -2045,18 +2061,13 @@ class _SalaryCard extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             '${_fmt(primarySalary * 12)} $currency / year',
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                           ),
-                          const SizedBox(height: 5),
+                          const SizedBox(height: 4),
                           const Text(
-                            'Monthly Guaranteed Pay',
+                            'Guaranteed',
                             style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                           ),
-                          if (amountType.isNotEmpty)
-                            Text(
-                              amountType,
-                              style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
-                            ),
                           if (currency != 'EUR' && eurPrimary > 0)
                             Text(
                               '≈ ${_fmt(eurPrimary)} EUR',
@@ -2074,7 +2085,7 @@ class _SalaryCard extends StatelessWidget {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: <Widget>[
-                                  const Text('Total Pay  ~', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                                  const Text('Total Pay  ≈  ', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                                   Text(
                                     '${_fmt(allInMonthlyEstimate)} $currency',
                                     style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
@@ -2095,7 +2106,7 @@ class _SalaryCard extends StatelessWidget {
                       const SizedBox(height: 10),
                       Center(
                         child: Text(
-                          '$confirmedCount similar submission${confirmedCount == 1 ? '' : 's'} at this airline',
+                          '$confirmedCount $rank submission${confirmedCount == 1 ? '' : 's'} at this airline',
                           style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                         ),
                       ),
