@@ -276,6 +276,7 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                   children: <Widget>[
 
                     // ── POSITION ─────────────────────────────────────────────
+                    const _SectionHeader('POSITION'),
 
                     // Airline
                     const _FieldLabel('Airline'),
@@ -310,30 +311,41 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                     )),
                     const SizedBox(height: 16),
 
-                    // Seniority / Flight Hours
+                    // Seniority / Flight Hours — grouped
                     _FieldLabelWithInfo(
-                      'Fill in one or both',
+                      'Experience',
                       info: 'Some airlines use years of seniority, others use total flight hours. Fill in whichever applies to you — or both if relevant.',
                     ),
-                    const _FieldLabel('Seniority (years)'),
-                    Obx(() => _SimpleDrop(
-                      hint: 'Select years of seniority',
-                      value: c.selectedSeniority.value.isEmpty ? null : c.selectedSeniority.value,
-                      count: 30,
-                      onChanged: (String? v) {
-                        if (v != null) { c.selectedSeniority.value = v; c.update(); }
-                      },
-                    )),
-                    const SizedBox(height: 16),
-
-                    // Total Flight Hours (optional)
-                    const _FieldLabel('Total Flight Hours'),
-                    const _SubLabel('Your total accumulated flight hours'),
-                    _NumberField(
-                      controller: c.totalFlightHoursController,
-                      hint: 'e.g. 3200',
-                      decimal: false,
-                      onChanged: (_) => c.update(),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.bgCard,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          const _FieldLabel('Seniority (years)'),
+                          Obx(() => _SimpleDrop(
+                            hint: 'Select years of seniority',
+                            value: c.selectedSeniority.value.isEmpty ? null : c.selectedSeniority.value,
+                            count: 30,
+                            onChanged: (String? v) {
+                              if (v != null) { c.selectedSeniority.value = v; c.update(); }
+                            },
+                          )),
+                          const SizedBox(height: 12),
+                          const _FieldLabel('Total Flight Hours'),
+                          const _SubLabel('Your total accumulated flight hours'),
+                          _NumberField(
+                            controller: c.totalFlightHoursController,
+                            hint: 'e.g. 3200',
+                            decimal: false,
+                            onChanged: (_) => c.update(),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 16),
 
@@ -352,9 +364,10 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                         },
                       );
                     }),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 28),
 
                     // ── CONTRACT ──────────────────────────────────────────────
+                    const _SectionHeader('CONTRACT'),
 
                     // Contract type
                     const _FieldLabel('Contract Type'),
@@ -388,7 +401,7 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                     const SizedBox(height: 16),
 
                     // Base / City
-                    const _FieldLabel('Base/City'),
+                    const _FieldLabel('Base / City'),
                     Obx(() {
                       final String country = c.selectedCountry.value;
                       final List<String>? cities = c.countries[country];
@@ -417,9 +430,22 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                         onChanged: (_) => c.update(),
                       );
                     }),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 28),
 
-                    // ── COMPENSATION ──────────────────────────────────────────
+                    // ── SALARY ────────────────────────────────────────────────
+                    const _SectionHeader('SALARY'),
+
+                    // Currency (first — pilots know their currency before gross/net)
+                    const _FieldLabel('Currency'),
+                    Obx(() => _OptionDrop(
+                      hint: 'Select Currency',
+                      value: c.selectedCurrency.value.isEmpty ? null : c.selectedCurrency.value,
+                      options: const <String>['NOK', 'EUR', 'GBP', 'USD', 'SEK', 'DKK'],
+                      onChanged: (String? v) {
+                        if (v != null) { c.selectedCurrency.value = v; c.update(); }
+                      },
+                    )),
+                    const SizedBox(height: 16),
 
                     // Amount type
                     const _FieldLabel('Amount Type'),
@@ -429,18 +455,6 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                       options: const <String>['Gross (before tax)', 'Net (after tax)'],
                       onChanged: (String? v) {
                         if (v != null) { c.selectedAmountType.value = v; c.update(); }
-                      },
-                    )),
-                    const SizedBox(height: 16),
-
-                    // Currency
-                    const _FieldLabel('Currency'),
-                    Obx(() => _OptionDrop(
-                      hint: 'Select Currency',
-                      value: c.selectedCurrency.value.isEmpty ? null : c.selectedCurrency.value,
-                      options: const <String>['NOK', 'EUR', 'GBP', 'USD', 'SEK', 'DKK'],
-                      onChanged: (String? v) {
-                        if (v != null) { c.selectedCurrency.value = v; c.update(); }
                       },
                     )),
                     const SizedBox(height: 16),
@@ -464,6 +478,7 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                     _FieldLabelWithInfo(
                       'Average Monthly Pay',
                       info: 'Think across all 12 months and divide by 12.\nSeasons vary — this is your realistic average.\n\nInclude everything:\n• Per diem\n• Block hours\n• Sector pay\n• Overtime\n• Productivity bonuses',
+                      optional: true,
                     ),
                     const _SubLabel('What you typically receive in your bank account per month — averaged across a full year including all pay.'),
                     _NumberField(
@@ -474,39 +489,45 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                       suffixText: '/ month',
                     ),
 
-                    // Live calculator
+                    // Live calculator (animated in/out)
                     Builder(builder: (BuildContext ctx) {
                       final double? guaranteed = double.tryParse(c.guaranteedMonthlyPayController.text);
-                      if (guaranteed == null || guaranteed <= 0) return const SizedBox.shrink();
-                      final double? allIn = double.tryParse(c.allInMonthlyEstimateController.text);
-                      final bool hasVariable = allIn != null && allIn > guaranteed;
-                      final double variable = hasVariable ? allIn - guaranteed : 0;
+                      final bool show = guaranteed != null && guaranteed > 0;
+                      final double? allIn = show ? double.tryParse(c.allInMonthlyEstimateController.text) : null;
+                      final bool hasVariable = allIn != null && allIn > (guaranteed ?? 0);
+                      final double variable = hasVariable ? allIn - guaranteed! : 0;
                       final String cur = c.selectedCurrency.value.isEmpty ? '' : ' ${c.selectedCurrency.value}';
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 12, bottom: 32),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: AppColors.bgCard,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              _CalcRow('Guaranteed', guaranteed, cur),
-                              if (hasVariable) ...<Widget>[
-                                const SizedBox(height: 6),
-                                _CalcRow('+ Variable', variable, cur),
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 8),
-                                  child: Divider(color: AppColors.border, height: 1),
+                      return AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: show
+                            ? Padding(
+                                key: const ValueKey<String>('calc'),
+                                padding: const EdgeInsets.only(top: 12, bottom: 32),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.bgCard,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: AppColors.border),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      _CalcRow('Guaranteed', guaranteed!, cur),
+                                      if (hasVariable) ...<Widget>[
+                                        const SizedBox(height: 6),
+                                        _CalcRow('+ Variable', variable, cur),
+                                        const Padding(
+                                          padding: EdgeInsets.symmetric(vertical: 8),
+                                          child: Divider(color: AppColors.border, height: 1),
+                                        ),
+                                        _CalcRow('≈ Total / month', allIn!, cur, isTotal: true),
+                                      ],
+                                    ],
+                                  ),
                                 ),
-                                _CalcRow('≈ Total / month', allIn, cur, isTotal: true),
-                              ],
-                            ],
-                          ),
-                        ),
+                              )
+                            : const SizedBox.shrink(key: ValueKey<String>('empty')),
                       );
                     }),
 
@@ -734,27 +755,47 @@ class SubmitSalaryConfirmScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
-                            Text(
-                              airlineName,
-                              style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
+                            Row(
+                              children: <Widget>[
+                                Expanded(
+                                  child: Text(
+                                    airlineName,
+                                    style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.accent.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(rank, style: const TextStyle(color: AppColors.accent, fontSize: 13, fontWeight: FontWeight.w600)),
+                                ),
+                              ],
                             ),
+                            const SizedBox(height: 2),
                             Text(
-                              '$rank · $aircraft${seniority > 0 ? ' · $seniority yr' : ''}${totalFlightHours != null && totalFlightHours > 0 ? ' · ${_fmt(totalFlightHours.toDouble())} hrs' : ''}',
-                              style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                              '$aircraft${seniority > 0 ? ' · $seniority yr' : ''}${totalFlightHours != null && totalFlightHours > 0 ? ' · ${_fmt(totalFlightHours.toDouble())} hrs' : ''}',
+                              style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                             ),
                             const SizedBox(height: 20),
                             Center(
                               child: Column(
                                 children: <Widget>[
                                   Text(
-                                    '${_fmt(guaranteedMonthlyPay)} $currency',
+                                    '${_fmt(guaranteedMonthlyPay)} $currency / month',
                                     style: const TextStyle(
                                       color: AppColors.accent,
-                                      fontSize: 44,
+                                      fontSize: 36,
                                       fontWeight: FontWeight.bold,
                                       letterSpacing: -1,
                                       height: 1,
                                     ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${_fmt(guaranteedMonthlyPay * 12)} $currency / year',
+                                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                                   ),
                                   const SizedBox(height: 5),
                                   const Text(
@@ -784,7 +825,7 @@ class SubmitSalaryConfirmScreen extends StatelessWidget {
                             const SizedBox(height: 12),
                             _InfoRow('Contract', contract),
                             _InfoRow('Country', country),
-                            _InfoRow('Base/City', base),
+                            _InfoRow('Base / City', base),
                           ],
                         ),
                       ),
@@ -825,7 +866,7 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 4),
+    padding: const EdgeInsets.only(bottom: 8),
     child: Row(
       children: <Widget>[
         SizedBox(
@@ -1461,7 +1502,8 @@ class _AirlineSearchSheetState extends State<_AirlineSearchSheet> {
 class _FieldLabelWithInfo extends StatelessWidget {
   final String text;
   final String info;
-  const _FieldLabelWithInfo(this.text, {required this.info});
+  final bool optional;
+  const _FieldLabelWithInfo(this.text, {required this.info, this.optional = false});
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -1492,6 +1534,18 @@ class _FieldLabelWithInfo extends StatelessWidget {
           ),
           child: const Icon(Icons.info_outline, color: AppColors.textMuted, size: 15),
         ),
+        if (optional) ...<Widget>[
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            decoration: BoxDecoration(
+              color: AppColors.bgCard,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: const Text('Optional', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
+          ),
+        ],
       ],
     ),
   );
@@ -1543,6 +1597,26 @@ class _FieldLabel extends StatelessWidget {
     child: Text(
       text,
       style: const TextStyle(color: AppColors.textMuted, fontSize: 13, fontWeight: FontWeight.w500),
+    ),
+  );
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String text;
+  const _SectionHeader(this.text);
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 16),
+    child: Row(
+      children: <Widget>[
+        Container(width: 3, height: 14, decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(2))),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: const TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 1.2),
+        ),
+      ],
     ),
   );
 }

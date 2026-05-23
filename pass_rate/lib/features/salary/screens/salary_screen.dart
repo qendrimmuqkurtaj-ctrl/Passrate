@@ -534,6 +534,9 @@ class SalaryController extends GetxController {
       }
     }
     result.sort((Map<String, dynamic> a, Map<String, dynamic> b) {
+      final bool aHas = a['hasData'] as bool? ?? false;
+      final bool bHas = b['hasData'] as bool? ?? false;
+      if (aHas != bHas) return aHas ? -1 : 1;
       final int cmp = (a['airline'] as String).compareTo(b['airline'] as String);
       if (cmp != 0) return cmp;
       return (a['rank'] as String).compareTo(b['rank'] as String);
@@ -597,6 +600,25 @@ class _SalaryScreenState extends State<SalaryScreen> {
           style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 16),
         ),
         centerTitle: true,
+        actions: <Widget>[
+          Obx(() {
+            if (!c.hasSubmitted.value) return const SizedBox.shrink();
+            return Row(
+              children: <Widget>[
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, color: AppColors.accent, size: 20),
+                  tooltip: 'Update salary',
+                  onPressed: () => Get.to(() => SubmitSalaryScreen(existingDocId: c.existingDocId, initialData: c.mySubmission, onDone: c.reload)),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: AppColors.failText, size: 20),
+                  tooltip: 'Delete salary',
+                  onPressed: () => _confirmDelete(c),
+                ),
+              ],
+            );
+          }),
+        ],
       ),
       body: Obx(() {
         if (c.loading.value) {
@@ -828,7 +850,7 @@ class _SalaryScreenState extends State<SalaryScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               const Text(
-                'SEARCH SALARIES',
+                'SALARIES',
                 style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 1.2),
               ),
               const SizedBox(height: 12),
@@ -856,16 +878,40 @@ class _SalaryScreenState extends State<SalaryScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                const Text(
-                  'Pilots like you',
-                  style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
+                Row(
+                  children: <Widget>[
+                    const Text(
+                      'Pilots like you',
+                      style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                    const SizedBox(width: 6),
+                    GestureDetector(
+                      onTap: () => Get.dialog<void>(
+                        AlertDialog(
+                          backgroundColor: AppColors.bgCard,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          content: const Text(
+                            'Shows pilots at the same rank and aircraft type as you, with similar experience (±2 years seniority or ±200 flight hours). All figures are in the same gross/net category as your submission.',
+                            style: TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.5),
+                          ),
+                          actions: <Widget>[
+                            TextButton(
+                              onPressed: Get.back,
+                              child: const Text('Got it', style: TextStyle(color: AppColors.accent)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      child: const Icon(Icons.info_outline, color: AppColors.textMuted, size: 15),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 if (peers.isEmpty)
                   _buildEmptyInsightCard('Not enough data yet — check back later')
                 else
                   SizedBox(
-                    height: 140,
+                    height: 180,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: peers.length,
@@ -994,6 +1040,13 @@ class _SalaryScreenState extends State<SalaryScreen> {
                 const SizedBox(height: 10),
 
                 // ── Salary cards ─────────────────────────────────────────
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 10),
+                  child: Text(
+                    'Amounts shown as reported by pilot',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                  ),
+                ),
                 if (results.isEmpty)
                   const Center(
                     child: Padding(
@@ -1011,31 +1064,6 @@ class _SalaryScreenState extends State<SalaryScreen> {
           }),
         ),
 
-        // Update / Delete buttons (fixed at bottom)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-          child: Row(
-            children: <Widget>[
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    Get.to(() => SubmitSalaryScreen(existingDocId: c.existingDocId, initialData: c.mySubmission, onDone: c.reload));
-                  },
-                  child: const Text('Update Salary', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                ),
-              ),
-              const SizedBox(width: 10),
-              OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.failText,
-                  side: const BorderSide(color: AppColors.failText),
-                ),
-                onPressed: () => _confirmDelete(c),
-                child: const Text('Delete', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }
@@ -1101,6 +1129,10 @@ class _SalaryScreenState extends State<SalaryScreen> {
           ],
         ),
         const SizedBox(height: 8),
+        const Padding(
+          padding: EdgeInsets.only(bottom: 6),
+          child: Text('Seniority', style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w500)),
+        ),
         Obx(() {
           const List<String> chips = <String>['<3y', '3-6y', '7-10y', '11-15y', '16-20y', '20+y'];
           return Wrap(
@@ -1137,6 +1169,10 @@ class _SalaryScreenState extends State<SalaryScreen> {
           );
         }),
         const SizedBox(height: 8),
+        const Padding(
+          padding: EdgeInsets.only(bottom: 6),
+          child: Text('Flight Hours', style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w500)),
+        ),
         Obx(() {
           const List<String> chips = <String>['<500h', '500-1500h', '1500-3000h', '3000-5000h', '5000+h'];
           return Wrap(
@@ -1379,6 +1415,9 @@ class _PeerCard extends StatelessWidget {
     final int seniority = (salary['seniorityYears'] as num?)?.toInt() ?? 0;
     final int? totalFlightHours = (salary['totalFlightHours'] as num?)?.toInt();
     final double eurSalary = _toEur(primarySalary, currency, rates);
+    final double? allInMonthlyEstimate = (salary['allInMonthlyEstimate'] as num?)?.toDouble()
+        ?? (salary['typicalMonthlyTotal'] as num?)?.toDouble();
+    final double? eurAllIn = allInMonthlyEstimate != null ? _toEur(allInMonthlyEstimate, currency, rates) : null;
 
     return GestureDetector(
       onTap: onTap,
@@ -1408,11 +1447,31 @@ class _PeerCard extends StatelessWidget {
                       fontSize: 17,
                     ),
                   ),
+                  const Text(
+                    'Monthly Guaranteed',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 10),
+                  ),
                   if (currency != 'EUR' && eurSalary > 0)
                     Text(
                       '≈ ${_fmt(eurSalary)} EUR',
                       style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
                     ),
+                  if (allInMonthlyEstimate != null && allInMonthlyEstimate > primarySalary) ...<Widget>[
+                    const SizedBox(height: 4),
+                    Text(
+                      '${_fmt(allInMonthlyEstimate)} $currency',
+                      style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    const Text(
+                      'Avg Monthly ~',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 10),
+                    ),
+                    if (currency != 'EUR' && eurAllIn != null && eurAllIn > 0)
+                      Text(
+                        '≈ ${_fmt(eurAllIn)} EUR',
+                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                      ),
+                  ],
                   const SizedBox(height: 6),
                   Text(country, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
                   if (seniority > 0)
@@ -1559,11 +1618,11 @@ class _SortChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: selected
               ? AppColors.accent.withValues(alpha: 0.15)
-              : AppColors.bgCard,
+              : AppColors.bgSecondary,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected ? AppColors.accent : AppColors.border,
@@ -1574,7 +1633,7 @@ class _SortChip extends StatelessWidget {
           label,
           style: TextStyle(
             color: selected ? AppColors.accent : AppColors.textMuted,
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
@@ -1924,13 +1983,6 @@ class _SalaryCard extends StatelessWidget {
                         ),
                       ),
                     ],
-                    const SizedBox(height: 6),
-                    const Center(
-                      child: Text(
-                        'Amounts shown as reported by pilot',
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 10),
-                      ),
-                    ),
                   ],
                 ),
               ),
