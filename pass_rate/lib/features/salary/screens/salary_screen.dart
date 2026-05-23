@@ -842,21 +842,120 @@ class _SalaryScreenState extends State<SalaryScreen> {
   Widget _buildSearchPage(SalaryController c) {
     return Column(
       children: <Widget>[
-        // Fixed search bar and filters (non-scrolling)
+        // Fixed: search + filter button + sort/show row
         Container(
           color: AppColors.bgPrimary,
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              const Text(
-                'SALARIES',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 1.2),
+              Row(
+                children: <Widget>[
+                  Expanded(child: _buildSearchBar(c)),
+                  const SizedBox(width: 10),
+                  Obx(() {
+                    final int filterCount = c.activeFilterCount -
+                        (c.searchQuery.value.isNotEmpty ? 1 : 0);
+                    return GestureDetector(
+                      onTap: () => _showFilterSheet(c),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        height: 44,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          color: filterCount > 0
+                              ? AppColors.accent.withValues(alpha: 0.15)
+                              : AppColors.bgCard,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: filterCount > 0
+                                ? AppColors.accent
+                                : AppColors.border,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Icon(
+                              Icons.tune,
+                              color: filterCount > 0
+                                  ? AppColors.accent
+                                  : AppColors.textMuted,
+                              size: 18,
+                            ),
+                            if (filterCount > 0) ...<Widget>[
+                              const SizedBox(width: 6),
+                              Text(
+                                '$filterCount',
+                                style: const TextStyle(
+                                  color: AppColors.accent,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
               ),
-              const SizedBox(height: 12),
-              _buildSearchBar(c),
               const SizedBox(height: 8),
-              _buildFilters(c),
+              Obx(() => SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: <Widget>[
+                    const Text(
+                      'Sort:',
+                      style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    _SortChip(
+                      label: 'Guaranteed',
+                      selected: c.sortBy.value == 'base',
+                      onTap: () => c.sortBy.value = 'base',
+                    ),
+                    const SizedBox(width: 6),
+                    _SortChip(
+                      label: 'Total Pay',
+                      selected: c.sortBy.value == 'typical',
+                      onTap: () => c.sortBy.value = 'typical',
+                    ),
+                    const SizedBox(width: 16),
+                    const Text(
+                      'Show:',
+                      style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    _SortChip(
+                      label: 'All',
+                      selected: c.filterAmountType.value == '',
+                      onTap: () => c.filterAmountType.value = '',
+                    ),
+                    const SizedBox(width: 6),
+                    _SortChip(
+                      label: 'Gross',
+                      selected: c.filterAmountType.value == 'gross',
+                      onTap: () => c.filterAmountType.value = 'gross',
+                    ),
+                    const SizedBox(width: 6),
+                    _SortChip(
+                      label: 'Net',
+                      selected: c.filterAmountType.value == 'net',
+                      onTap: () => c.filterAmountType.value = 'net',
+                    ),
+                  ],
+                ),
+              )),
             ],
           ),
         ),
@@ -982,71 +1081,19 @@ class _SalaryScreenState extends State<SalaryScreen> {
                   const SizedBox(height: 10),
                 ],
 
-                // ── Results count ────────────────────────────────────────
-                Container(height: 1.5, color: AppColors.accent.withValues(alpha: 0.4)),
-                const SizedBox(height: 10),
-                Row(
-                  children: <Widget>[
-                    const Text(
-                      'Sort by:',
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(width: 8),
-                    _SortChip(
-                      label: 'Guaranteed',
-                      selected: c.sortBy.value == 'base',
-                      onTap: () => c.sortBy.value = 'base',
-                    ),
-                    const SizedBox(width: 6),
-                    _SortChip(
-                      label: 'All-In',
-                      selected: c.sortBy.value == 'typical',
-                      onTap: () => c.sortBy.value = 'typical',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: <Widget>[
-                    const Text(
-                      'Show:',
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(width: 8),
-                    _SortChip(
-                      label: 'All',
-                      selected: c.filterAmountType.value == '',
-                      onTap: () => c.filterAmountType.value = '',
-                    ),
-                    const SizedBox(width: 6),
-                    _SortChip(
-                      label: 'Gross only',
-                      selected: c.filterAmountType.value == 'gross',
-                      onTap: () => c.filterAmountType.value = 'gross',
-                    ),
-                    const SizedBox(width: 6),
-                    _SortChip(
-                      label: 'Net only',
-                      selected: c.filterAmountType.value == 'net',
-                      onTap: () => c.filterAmountType.value = 'net',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
+                // ── Results count + disclaimer ───────────────────────────
                 Text(
                   '${results.length} result${results.length == 1 ? '' : 's'}',
                   style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
                 ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Amounts shown as reported by pilot',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                ),
                 const SizedBox(height: 10),
 
                 // ── Salary cards ─────────────────────────────────────────
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 10),
-                  child: Text(
-                    'Amounts shown as reported by pilot',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 11),
-                  ),
-                ),
                 if (results.isEmpty)
                   const Center(
                     child: Padding(
@@ -1078,137 +1125,18 @@ class _SalaryScreenState extends State<SalaryScreen> {
     ));
   }
 
-  Widget _buildFilters(SalaryController c) {
-    return Column(
-      children: <Widget>[
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: Obx(() => _SearchableFilterDrop(
-                hint: 'Rank',
-                value: c.filterRank.value.isEmpty ? null : c.filterRank.value,
-                options: const <String>['SO', 'FO', 'Captain'],
-                onChanged: (String? v) => c.filterRank.value = v ?? '',
-                searchable: false,
-              )),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Obx(() => _SearchableFilterDrop(
-                hint: 'Country',
-                placeholder: 'All Countries',
-                value: c.filterCountry.value.isEmpty ? null : c.filterCountry.value,
-                options: c.availableCountries,
-                onChanged: (String? v) => c.filterCountry.value = v ?? '',
-              )),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: Obx(() => _SearchableFilterDrop(
-                hint: 'Aircraft',
-                placeholder: 'All Aircraft Types',
-                value: c.filterAircraftType.value.isEmpty ? null : c.filterAircraftType.value,
-                options: kAircraftTypes,
-                onChanged: (String? v) => c.filterAircraftType.value = v ?? '',
-              )),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Obx(() => _SearchableFilterDrop(
-                hint: 'Base/City',
-                placeholder: 'All Bases',
-                value: c.filterBase.value.isEmpty ? null : c.filterBase.value,
-                options: c.availableBases,
-                onChanged: (String? v) => c.filterBase.value = v ?? '',
-              )),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        const Padding(
-          padding: EdgeInsets.only(bottom: 6),
-          child: Text('Seniority', style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w500)),
-        ),
-        Obx(() {
-          const List<String> chips = <String>['<3y', '3-6y', '7-10y', '11-15y', '16-20y', '20+y'];
-          return Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            children: chips.map((String chip) {
-              final bool selected = c.filterSeniority.value == chip;
-              return GestureDetector(
-                onTap: () => c.filterSeniority.value = selected ? '' : chip,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? AppColors.accent.withValues(alpha: 0.15)
-                        : AppColors.bgCard,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: selected ? AppColors.accent : AppColors.border,
-                      width: selected ? 1.5 : 1.0,
-                    ),
-                  ),
-                  child: Text(
-                    chip,
-                    style: TextStyle(
-                      color: selected ? AppColors.accent : AppColors.textMuted,
-                      fontSize: 12,
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          );
-        }),
-        const SizedBox(height: 8),
-        const Padding(
-          padding: EdgeInsets.only(bottom: 6),
-          child: Text('Flight Hours', style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w500)),
-        ),
-        Obx(() {
-          const List<String> chips = <String>['<500h', '500-1500h', '1500-3000h', '3000-5000h', '5000+h'];
-          return Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            children: chips.map((String chip) {
-              final bool selected = c.filterFlightHours.value == chip;
-              return GestureDetector(
-                onTap: () => c.filterFlightHours.value = selected ? '' : chip,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? AppColors.accent.withValues(alpha: 0.15)
-                        : AppColors.bgCard,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: selected ? AppColors.accent : AppColors.border,
-                      width: selected ? 1.5 : 1.0,
-                    ),
-                  ),
-                  child: Text(
-                    chip,
-                    style: TextStyle(
-                      color: selected ? AppColors.accent : AppColors.textMuted,
-                      fontSize: 12,
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          );
-        }),
-      ],
+  void _showFilterSheet(SalaryController c) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.bgCard,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: _FiltersSheet(c: c),
+      ),
     );
   }
 
@@ -1463,7 +1391,7 @@ class _PeerCard extends StatelessWidget {
                       style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600, fontSize: 13),
                     ),
                     const Text(
-                      'Avg Monthly ~',
+                      'Total Pay ~',
                       style: TextStyle(color: AppColors.textMuted, fontSize: 10),
                     ),
                     if (currency != 'EUR' && eurAllIn != null && eurAllIn > 0)
@@ -1574,7 +1502,7 @@ class _BestCountriesCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      if (salaryEur > 0)
+                      if (currency != 'EUR' && salaryEur > 0)
                         Text(
                           '≈ ${_fmt(salaryEur)} EUR',
                           style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
@@ -1834,6 +1762,195 @@ class _FilterSearchSheetState extends State<_FilterSearchSheet> {
   }
 }
 
+class _FiltersSheet extends StatelessWidget {
+  final SalaryController c;
+  const _FiltersSheet({required this.c});
+
+  Widget _chip(String chip, bool selected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.accent.withValues(alpha: 0.15) : AppColors.bgSecondary,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? AppColors.accent : AppColors.border,
+            width: selected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Text(
+          chip,
+          style: TextStyle(
+            color: selected ? AppColors.accent : AppColors.textMuted,
+            fontSize: 12,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        const SizedBox(height: 12),
+        Container(
+          width: 40,
+          height: 4,
+          decoration: BoxDecoration(
+            color: AppColors.border,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: <Widget>[
+              const Text(
+                'Filters',
+                style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 16),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: c.clearAllFilters,
+                child: const Text(
+                  'Clear all',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 13,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Flexible(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Obx(() => _SearchableFilterDrop(
+                        hint: 'Rank',
+                        value: c.filterRank.value.isEmpty ? null : c.filterRank.value,
+                        options: const <String>['SO', 'FO', 'Captain'],
+                        onChanged: (String? v) => c.filterRank.value = v ?? '',
+                        searchable: false,
+                      )),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Obx(() => _SearchableFilterDrop(
+                        hint: 'Country',
+                        placeholder: 'All Countries',
+                        value: c.filterCountry.value.isEmpty ? null : c.filterCountry.value,
+                        options: c.availableCountries,
+                        onChanged: (String? v) => c.filterCountry.value = v ?? '',
+                      )),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Obx(() => _SearchableFilterDrop(
+                        hint: 'Aircraft',
+                        placeholder: 'All Aircraft',
+                        value: c.filterAircraftType.value.isEmpty ? null : c.filterAircraftType.value,
+                        options: kAircraftTypes,
+                        onChanged: (String? v) => c.filterAircraftType.value = v ?? '',
+                      )),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Obx(() => _SearchableFilterDrop(
+                        hint: 'Base/City',
+                        placeholder: 'All Bases',
+                        value: c.filterBase.value.isEmpty ? null : c.filterBase.value,
+                        options: c.availableBases,
+                        onChanged: (String? v) => c.filterBase.value = v ?? '',
+                      )),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Seniority',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                Obx(() {
+                  const List<String> chips = <String>['<3y', '3-6y', '7-10y', '11-15y', '16-20y', '20+y'];
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: chips
+                        .map((String ch) => _chip(
+                              ch,
+                              c.filterSeniority.value == ch,
+                              () => c.filterSeniority.value =
+                                  c.filterSeniority.value == ch ? '' : ch,
+                            ))
+                        .toList(),
+                  );
+                }),
+                const SizedBox(height: 16),
+                const Text(
+                  'Flight Hours',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                Obx(() {
+                  const List<String> chips = <String>[
+                    '<500h', '500-1500h', '1500-3000h', '3000-5000h', '5000+h'
+                  ];
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: chips
+                        .map((String ch) => _chip(
+                              ch,
+                              c.filterFlightHours.value == ch,
+                              () => c.filterFlightHours.value =
+                                  c.filterFlightHours.value == ch ? '' : ch,
+                            ))
+                        .toList(),
+                  );
+                }),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Show Results',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _SalaryCard extends StatelessWidget {
   final Map<String, dynamic> salary;
   final Map<String, double> rates;
@@ -1957,7 +2074,7 @@ class _SalaryCard extends StatelessWidget {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: <Widget>[
-                                  const Text('Avg Monthly  ~', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                                  const Text('Total Pay  ~', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                                   Text(
                                     '${_fmt(allInMonthlyEstimate)} $currency',
                                     style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
