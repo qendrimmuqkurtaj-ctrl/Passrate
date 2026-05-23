@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/services/firebase_service.dart';
 import '../../../features/assessment/controllers/assessment_controller.dart';
@@ -30,6 +29,7 @@ class StatisticsController extends GetxController {
     refresh();
   }
 
+  @override
   Future<void> refresh() async {
     airlineStats.value = null;
     await Future.wait(<Future<void>>[

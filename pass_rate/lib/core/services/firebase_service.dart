@@ -162,7 +162,7 @@ class FirebaseService {
       final double successRate = total > 0 ? double.parse((passedCount / total * 100).toStringAsFixed(2)) : 0;
 
       final Map<int, int> monthlyData = <int, int>{};
-      for (int i = 1; i <= 12; i++) monthlyData[i] = 0;
+      for (int i = 1; i <= 12; i++) { monthlyData[i] = 0; }
       for (final Map<String, dynamic> doc in docs) {
         final int month = (doc['month'] as int?) ?? 0;
         if (month >= 1 && month <= 12) monthlyData[month] = (monthlyData[month] ?? 0) + 1;

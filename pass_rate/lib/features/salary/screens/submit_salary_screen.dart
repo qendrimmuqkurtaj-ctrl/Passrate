@@ -513,7 +513,7 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: <Widget>[
-                                      _CalcRow('Guaranteed', guaranteed!, cur),
+                                      _CalcRow('Guaranteed', guaranteed, cur),
                                       if (hasVariable) ...<Widget>[
                                         const SizedBox(height: 6),
                                         _CalcRow('+ Variable', variable, cur),
@@ -521,7 +521,7 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                                           padding: EdgeInsets.symmetric(vertical: 8),
                                           child: Divider(color: AppColors.border, height: 1),
                                         ),
-                                        _CalcRow('≈ Total / month', allIn!, cur, isTotal: true),
+                                        _CalcRow('≈ Total / month', allIn, cur, isTotal: true),
                                       ],
                                     ],
                                   ),

@@ -50,11 +50,6 @@ class AssessmentController extends GetxController {
     super.onClose();
   }
 
-  void _setDefaultDate() {
-    final DateTime now = DateTime.now();
-    dateController.text = '${now.year}-${now.month.toString().padLeft(2, '0')}';
-  }
-
   Future<void> loadAirlines() async {
     loadingAirlines.value = true;
     loadingAirlinesError.value = false;
