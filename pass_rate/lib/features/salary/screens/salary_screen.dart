@@ -2073,7 +2073,9 @@ class _SalaryCard extends StatelessWidget {
                           ],
                           const SizedBox(height: 4),
                           Text(
-                            '${_fmt(primarySalary * 12)} $currency / year',
+                            currency == 'EUR'
+                                ? '${_fmt(primarySalary * 12)} EUR / year'
+                                : '${_fmt(primarySalary * 12)} $currency / year${eurPrimary > 0 ? '  ≈  ${_fmt(eurPrimary * 12)} EUR / year' : ''}',
                             style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                           ),
                           const SizedBox(height: 2),
@@ -2098,7 +2100,7 @@ class _SalaryCard extends StatelessWidget {
                                     '${_fmt(allInMonthlyEstimate)} $currency',
                                     style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
                                   ),
-                                  if (eurAllIn != null && eurAllIn > 0 && currency != 'EUR')
+                                  if (currency != 'EUR' && eurAllIn != null && eurAllIn > 0)
                                     Text(
                                       '  ≈ ${_fmt(eurAllIn)} EUR',
                                       style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
