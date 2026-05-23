@@ -2058,21 +2058,29 @@ class _SalaryCard extends StatelessWidget {
                               height: 1,
                             ),
                           ),
+                          if (eurPrimary > 0) ...<Widget>[
+                            const SizedBox(height: 3),
+                            Text(
+                              currency == 'EUR'
+                                  ? '${_fmt(eurPrimary)} EUR / month'
+                                  : '≈ ${_fmt(eurPrimary)} EUR / month',
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 4),
                           Text(
                             '${_fmt(primarySalary * 12)} $currency / year',
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 2),
                           const Text(
                             'Guaranteed',
                             style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                           ),
-                          if (currency != 'EUR' && eurPrimary > 0)
-                            Text(
-                              '≈ ${_fmt(eurPrimary)} EUR',
-                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                            ),
                           if (allInMonthlyEstimate != null) ...<Widget>[
                             const SizedBox(height: 12),
                             Container(
@@ -2090,7 +2098,7 @@ class _SalaryCard extends StatelessWidget {
                                     '${_fmt(allInMonthlyEstimate)} $currency',
                                     style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
                                   ),
-                                  if (currency != 'EUR' && eurAllIn != null && eurAllIn > 0)
+                                  if (eurAllIn != null && eurAllIn > 0 && currency != 'EUR')
                                     Text(
                                       '  ≈ ${_fmt(eurAllIn)} EUR',
                                       style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
