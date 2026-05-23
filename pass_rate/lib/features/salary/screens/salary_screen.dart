@@ -1010,7 +1010,7 @@ class _SalaryScreenState extends State<SalaryScreen> {
                   _buildEmptyInsightCard('Not enough data yet — check back later')
                 else
                   SizedBox(
-                    height: 180,
+                    height: 230,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: peers.length,
@@ -1339,6 +1339,9 @@ class _PeerCard extends StatelessWidget {
         ?? (salary['fixedMonthlyTotal'] as num?)?.toDouble()
         ?? (salary['baseSalary'] as num?)?.toDouble() ?? 0;
     final String currency = salary['currency'] as String? ?? '';
+    final String airline = salary['airline'] as String? ?? '-';
+    final String rank = salary['rank'] as String? ?? '';
+    final String aircraft = salary['aircraftType'] as String? ?? '';
     final String country = salary['country'] as String? ?? '-';
     final int seniority = (salary['seniorityYears'] as num?)?.toInt() ?? 0;
     final int? totalFlightHours = (salary['totalFlightHours'] as num?)?.toInt();
@@ -1346,11 +1349,15 @@ class _PeerCard extends StatelessWidget {
     final double? allInMonthlyEstimate = (salary['allInMonthlyEstimate'] as num?)?.toDouble()
         ?? (salary['typicalMonthlyTotal'] as num?)?.toDouble();
     final double? eurAllIn = allInMonthlyEstimate != null ? _toEur(allInMonthlyEstimate, currency, rates) : null;
+    final bool isGross = _normAmtType(salary['amountType'] as String?) == 'gross';
+    const Color grossColor = Color(0xFF4DB87A);
+    const Color netColor = Color(0xFF5B9CF6);
+    final Color amtColor = isGross ? grossColor : netColor;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 160,
+        width: 170,
         decoration: BoxDecoration(
           color: AppColors.bgCard,
           borderRadius: BorderRadius.circular(10),
@@ -1367,6 +1374,47 @@ class _PeerCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
+                  // Airline + gross/net badge
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          airline,
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: amtColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          isGross ? 'G' : 'N',
+                          style: TextStyle(color: amtColor, fontSize: 10, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Rank + aircraft subtitle
+                  if (rank.isNotEmpty || aircraft.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        <String>[if (rank.isNotEmpty) rank, if (aircraft.isNotEmpty) aircraft].join(' · '),
+                        style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  // Salary amount
                   Text(
                     '${_fmt(primarySalary)} $currency',
                     style: const TextStyle(
@@ -1379,9 +1427,11 @@ class _PeerCard extends StatelessWidget {
                     'Monthly Guaranteed',
                     style: TextStyle(color: AppColors.textMuted, fontSize: 10),
                   ),
-                  if (currency != 'EUR' && eurSalary > 0)
+                  if (eurSalary > 0)
                     Text(
-                      '≈ ${_fmt(eurSalary)} EUR',
+                      currency == 'EUR'
+                          ? '${_fmt(eurSalary)} EUR'
+                          : '≈ ${_fmt(eurSalary)} EUR',
                       style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
                     ),
                   if (allInMonthlyEstimate != null && allInMonthlyEstimate > primarySalary) ...<Widget>[
@@ -1394,18 +1444,18 @@ class _PeerCard extends StatelessWidget {
                       'Total Pay ~',
                       style: TextStyle(color: AppColors.textMuted, fontSize: 10),
                     ),
-                    if (currency != 'EUR' && eurAllIn != null && eurAllIn > 0)
+                    if (eurAllIn != null && eurAllIn > 0 && currency != 'EUR')
                       Text(
                         '≈ ${_fmt(eurAllIn)} EUR',
                         style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
                       ),
                   ],
                   const SizedBox(height: 6),
-                  Text(country, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  Text(country, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
                   if (seniority > 0)
-                    Text('$seniority yr seniority', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                    Text('$seniority yr seniority', style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
                   if (totalFlightHours != null && totalFlightHours > 0)
-                    Text('${_fmt(totalFlightHours.toDouble())} hrs', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                    Text('${_fmt(totalFlightHours.toDouble())} hrs', style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
                 ],
               ),
             ),
