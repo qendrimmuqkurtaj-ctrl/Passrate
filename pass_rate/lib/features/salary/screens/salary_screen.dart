@@ -183,24 +183,26 @@ class SalaryController extends GetxController {
     return matches.take(3).toList();
   }
 
-  // Top 3 countries by the single highest-paid individual submission for the current user's rank.
+  // Top 3 airlines by the single highest-paid individual submission for the current user's rank.
   List<Map<String, dynamic>> get bestPaidCountriesForMyRank {
     if (myRank.isEmpty) return <Map<String, dynamic>>[];
-    final Map<String, Map<String, dynamic>> bestByCountry = <String, Map<String, dynamic>>{};
+    final Map<String, Map<String, dynamic>> bestByAirline = <String, Map<String, dynamic>>{};
+    final Map<String, int> countByAirline = <String, int>{};
     final String myNormAmt = _normAmtType(myAmountType);
     for (final Map<String, dynamic> s in salaries) {
       if (s['rank'] != myRank) continue;
       if (_normAmtType(s['amountType'] as String?) != myNormAmt) continue;
-      final String country = s['country'] as String? ?? '';
-      if (country.isEmpty) continue;
+      final String airline = s['airline'] as String? ?? '';
+      if (airline.isEmpty) continue;
+      countByAirline[airline] = (countByAirline[airline] ?? 0) + 1;
       final double sal = (s['guaranteedMonthlyPay'] as num?)?.toDouble()
           ?? (s['fixedMonthlyTotal'] as num?)?.toDouble()
           ?? (s['baseSalary'] as num?)?.toDouble() ?? 0;
       final String cur = s['currency'] as String? ?? '';
       final double eur = toEur(sal, cur);
-      final Map<String, dynamic>? current = bestByCountry[country];
+      final Map<String, dynamic>? current = bestByAirline[airline];
       if (current == null) {
-        bestByCountry[country] = s;
+        bestByAirline[airline] = s;
       } else {
         final double currentEur = toEur(
           (current['guaranteedMonthlyPay'] as num?)?.toDouble()
@@ -208,19 +210,21 @@ class SalaryController extends GetxController {
               ?? (current['baseSalary'] as num?)?.toDouble() ?? 0,
           current['currency'] as String? ?? '',
         );
-        if (eur > currentEur) bestByCountry[country] = s;
+        if (eur > currentEur) bestByAirline[airline] = s;
       }
     }
-    final List<Map<String, dynamic>> result = bestByCountry.entries.map((MapEntry<String, Map<String, dynamic>> e) {
+    final List<Map<String, dynamic>> result = bestByAirline.entries.map((MapEntry<String, Map<String, dynamic>> e) {
       final double sal = (e.value['guaranteedMonthlyPay'] as num?)?.toDouble()
           ?? (e.value['fixedMonthlyTotal'] as num?)?.toDouble()
           ?? (e.value['baseSalary'] as num?)?.toDouble() ?? 0;
       final String cur = e.value['currency'] as String? ?? '';
       return <String, dynamic>{
-        'country': e.key,
+        'airline': e.key,
+        'country': e.value['country'] as String? ?? '',
         'salary': sal,
         'salaryEur': toEur(sal, cur),
         'currency': cur,
+        'submissionCount': countByAirline[e.key] ?? 1,
       };
     }).toList();
     result.sort((Map<String, dynamic> a, Map<String, dynamic> b) =>
@@ -1029,12 +1033,12 @@ class _SalaryScreenState extends State<SalaryScreen> {
                   children: <Widget>[
                     Expanded(
                       child: Text(
-                        'Top countries for ${c.myRank}s',
+                        'Top paying airlines for ${c.myRank}s',
                         style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
                       ),
                     ),
                     Tooltip(
-                      message: 'Based on highest single salary submitted per country for your rank',
+                      message: 'Based on highest single salary submitted per airline for your rank',
                       child: const Icon(Icons.info_outline, color: AppColors.textMuted, size: 16),
                     ),
                   ],
@@ -1508,15 +1512,24 @@ class _BestCountriesCard extends StatelessWidget {
           final double salary = (item['salary'] as double?) ?? 0;
           final double salaryEur = (item['salaryEur'] as double?) ?? 0;
           final String currency = item['currency'] as String? ?? '';
-          final String country = item['country'] as String? ?? '-';
+          final String airline = item['airline'] as String? ?? '-';
+          final String country = item['country'] as String? ?? '';
+          final int submissionCount = item['submissionCount'] as int? ?? 0;
           final bool isLast = idx == countries.length - 1;
           final Color rankColor = _rankColor(idx);
           final double rel = maxEur > 0 ? (salaryEur / maxEur).clamp(0.0, 1.0) : 0.0;
 
+          // Subtitle: country · N submissions
+          final List<String> subtitleParts = <String>[
+            if (country.isNotEmpty) country,
+            if (submissionCount > 0) '$submissionCount submission${submissionCount == 1 ? '' : 's'}',
+          ];
+          final String subtitle = subtitleParts.join(' · ');
+
           return Padding(
-            padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
+            padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Container(
                   width: 30,
@@ -1538,18 +1551,24 @@ class _BestCountriesCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
+                      // Country + EUR amount (EUR primary)
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           Expanded(
                             child: Text(
-                              country,
-                              style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                              airline,
+                              style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            currency == 'EUR' ? '${_fmt(salary)} EUR' : '${_fmt(salary)} $currency',
+                            salaryEur > 0
+                                ? (currency == 'EUR'
+                                    ? '${_fmt(salaryEur)} EUR'
+                                    : '≈ ${_fmt(salaryEur)} EUR')
+                                : '${_fmt(salary)} $currency',
                             style: TextStyle(
                               color: rankColor,
                               fontSize: 13,
@@ -1558,12 +1577,26 @@ class _BestCountriesCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      if (currency != 'EUR' && salaryEur > 0)
-                        Text(
-                          '≈ ${_fmt(salaryEur)} EUR',
-                          style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                      // Airline + submission count
+                      if (subtitle.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            subtitle,
+                            style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      const SizedBox(height: 5),
+                      // Local currency secondary (non-EUR only)
+                      if (currency != 'EUR' && salaryEur > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 1),
+                          child: Text(
+                            '${_fmt(salary)} $currency',
+                            style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                          ),
+                        ),
+                      const SizedBox(height: 6),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(3),
                         child: LinearProgressIndicator(
