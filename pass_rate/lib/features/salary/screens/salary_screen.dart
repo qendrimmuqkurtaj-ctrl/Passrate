@@ -1414,9 +1414,13 @@ class _PeerCard extends StatelessWidget {
                       ),
                     ),
                   const SizedBox(height: 8),
-                  // Salary amount
+                  // Salary amount — EUR primary, local secondary
                   Text(
-                    '${_fmt(primarySalary)} $currency',
+                    eurSalary > 0
+                        ? (currency == 'EUR'
+                            ? '${_fmt(eurSalary)} EUR'
+                            : '≈ ${_fmt(eurSalary)} EUR')
+                        : '${_fmt(primarySalary)} $currency',
                     style: const TextStyle(
                       color: AppColors.accent,
                       fontWeight: FontWeight.bold,
@@ -1427,27 +1431,29 @@ class _PeerCard extends StatelessWidget {
                     'Monthly Guaranteed',
                     style: TextStyle(color: AppColors.textMuted, fontSize: 10),
                   ),
-                  if (eurSalary > 0)
+                  if (currency != 'EUR' && eurSalary > 0)
                     Text(
-                      currency == 'EUR'
-                          ? '${_fmt(eurSalary)} EUR'
-                          : '≈ ${_fmt(eurSalary)} EUR',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                      '${_fmt(primarySalary)} $currency',
+                      style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                     ),
                   if (allInMonthlyEstimate != null && allInMonthlyEstimate > primarySalary) ...<Widget>[
                     const SizedBox(height: 4),
                     Text(
-                      '${_fmt(allInMonthlyEstimate)} $currency',
+                      (eurAllIn != null && eurAllIn > 0)
+                          ? (currency == 'EUR'
+                              ? '${_fmt(eurAllIn)} EUR'
+                              : '≈ ${_fmt(eurAllIn)} EUR')
+                          : '${_fmt(allInMonthlyEstimate)} $currency',
                       style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600, fontSize: 13),
                     ),
                     const Text(
                       'Total Pay ~',
                       style: TextStyle(color: AppColors.textMuted, fontSize: 10),
                     ),
-                    if (eurAllIn != null && eurAllIn > 0 && currency != 'EUR')
+                    if (currency != 'EUR' && eurAllIn != null && eurAllIn > 0)
                       Text(
-                        '≈ ${_fmt(eurAllIn)} EUR',
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                        '${_fmt(allInMonthlyEstimate)} $currency',
+                        style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                       ),
                   ],
                   const SizedBox(height: 6),
@@ -2094,12 +2100,17 @@ class _SalaryCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 14),
 
-                    // Hero salary (no divider — whitespace provides separation)
+                    // Hero salary — EUR primary, local currency secondary
                     Center(
                       child: Column(
                         children: <Widget>[
+                          // Headline: EUR if rates loaded, fallback to local
                           Text(
-                            '${_fmt(primarySalary)} $currency / month',
+                            eurPrimary > 0
+                                ? (currency == 'EUR'
+                                    ? '${_fmt(eurPrimary)} EUR / month'
+                                    : '≈ ${_fmt(eurPrimary)} EUR / month')
+                                : '${_fmt(primarySalary)} $currency / month',
                             style: const TextStyle(
                               color: AppColors.accent,
                               fontSize: 34,
@@ -2108,26 +2119,33 @@ class _SalaryCard extends StatelessWidget {
                               height: 1,
                             ),
                           ),
-                          if (eurPrimary > 0) ...<Widget>[
+                          // Local amount as secondary (non-EUR only, when rates loaded)
+                          if (currency != 'EUR' && eurPrimary > 0) ...<Widget>[
                             const SizedBox(height: 3),
                             Text(
-                              currency == 'EUR'
-                                  ? '${_fmt(eurPrimary)} EUR / month'
-                                  : '≈ ${_fmt(eurPrimary)} EUR / month',
+                              '${_fmt(primarySalary)} $currency / month',
                               style: const TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
+                                color: AppColors.textMuted,
+                                fontSize: 13,
                               ),
                             ),
                           ],
                           const SizedBox(height: 4),
+                          // Yearly: EUR first
                           Text(
-                            currency == 'EUR'
-                                ? '${_fmt(primarySalary * 12)} EUR / year'
-                                : '${_fmt(primarySalary * 12)} $currency / year${eurPrimary > 0 ? '  ≈  ${_fmt(eurPrimary * 12)} EUR / year' : ''}',
-                            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                            eurPrimary > 0
+                                ? (currency == 'EUR'
+                                    ? '${_fmt(eurPrimary * 12)} EUR / year'
+                                    : '≈ ${_fmt(eurPrimary * 12)} EUR / year')
+                                : '${_fmt(primarySalary * 12)} $currency / year',
+                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                           ),
+                          // Local yearly secondary (non-EUR only)
+                          if (currency != 'EUR' && eurPrimary > 0)
+                            Text(
+                              '${_fmt(primarySalary * 12)} $currency / year',
+                              style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                            ),
                           const SizedBox(height: 2),
                           const Text(
                             'Guaranteed',
@@ -2146,13 +2164,19 @@ class _SalaryCard extends StatelessWidget {
                                 mainAxisSize: MainAxisSize.min,
                                 children: <Widget>[
                                   const Text('Total Pay  ≈  ', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                                  // EUR primary in pill
                                   Text(
-                                    '${_fmt(allInMonthlyEstimate)} $currency',
+                                    (eurAllIn != null && eurAllIn > 0)
+                                        ? (currency == 'EUR'
+                                            ? '${_fmt(eurAllIn)} EUR'
+                                            : '≈ ${_fmt(eurAllIn)} EUR')
+                                        : '${_fmt(allInMonthlyEstimate)} $currency',
                                     style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
                                   ),
+                                  // Local in parentheses
                                   if (currency != 'EUR' && eurAllIn != null && eurAllIn > 0)
                                     Text(
-                                      '  ≈ ${_fmt(eurAllIn)} EUR',
+                                      '  (${_fmt(allInMonthlyEstimate)} $currency)',
                                       style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                                     ),
                                 ],
