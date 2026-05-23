@@ -310,7 +310,11 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                     )),
                     const SizedBox(height: 16),
 
-                    // Seniority
+                    // Seniority / Flight Hours
+                    _FieldLabelWithInfo(
+                      'Fill in one or both',
+                      info: 'Some airlines use years of seniority, others use total flight hours. Fill in whichever applies to you — or both if relevant.',
+                    ),
                     const _FieldLabel('Seniority (years)'),
                     Obx(() => _SimpleDrop(
                       hint: 'Select years of seniority',
