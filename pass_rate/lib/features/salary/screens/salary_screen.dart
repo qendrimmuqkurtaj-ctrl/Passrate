@@ -1377,6 +1377,7 @@ class _PeerCard extends StatelessWidget {
     final String currency = salary['currency'] as String? ?? '';
     final String country = salary['country'] as String? ?? '-';
     final int seniority = (salary['seniorityYears'] as num?)?.toInt() ?? 0;
+    final int? totalFlightHours = (salary['totalFlightHours'] as num?)?.toInt();
     final double eurSalary = _toEur(primarySalary, currency, rates);
 
     return GestureDetector(
@@ -1414,7 +1415,10 @@ class _PeerCard extends StatelessWidget {
                     ),
                   const SizedBox(height: 6),
                   Text(country, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                  Text('$seniority yr seniority', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  if (seniority > 0)
+                    Text('$seniority yr seniority', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  if (totalFlightHours != null && totalFlightHours > 0)
+                    Text('${_fmt(totalFlightHours.toDouble())} hrs', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
                 ],
               ),
             ),

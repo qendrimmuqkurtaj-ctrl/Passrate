@@ -427,8 +427,9 @@ class FirebaseService {
       final Iterable<double> foSalaries = others
           .where((Map<String, dynamic> s) => s['rank'] == 'FO')
           .map((Map<String, dynamic> s) => _toEurAmount(
-                (s['guaranteedMonthlyPay'] as num?)?.toDouble() ??
-                    (s['baseSalary'] as num?)?.toDouble() ?? 0,
+                (s['guaranteedMonthlyPay'] as num?)?.toDouble()
+                    ?? (s['fixedMonthlyTotal'] as num?)?.toDouble()
+                    ?? (s['baseSalary'] as num?)?.toDouble() ?? 0,
                 s['currency'] as String? ?? 'EUR',
                 rates,
               ));
@@ -441,8 +442,9 @@ class FirebaseService {
       final Iterable<double> foSalaries = others
           .where((Map<String, dynamic> s) => s['rank'] == 'FO')
           .map((Map<String, dynamic> s) => _toEurAmount(
-                (s['guaranteedMonthlyPay'] as num?)?.toDouble() ??
-                    (s['baseSalary'] as num?)?.toDouble() ?? 0,
+                (s['guaranteedMonthlyPay'] as num?)?.toDouble()
+                    ?? (s['fixedMonthlyTotal'] as num?)?.toDouble()
+                    ?? (s['baseSalary'] as num?)?.toDouble() ?? 0,
                 s['currency'] as String? ?? 'EUR',
                 rates,
               ));
@@ -454,8 +456,9 @@ class FirebaseService {
     final List<double> peerSalaries = others
         .where((Map<String, dynamic> s) => s['rank'] == rank && s['aircraftType'] == aircraftType)
         .map((Map<String, dynamic> s) => _toEurAmount(
-              (s['guaranteedMonthlyPay'] as num?)?.toDouble() ??
-                  (s['baseSalary'] as num?)?.toDouble() ?? 0,
+              (s['guaranteedMonthlyPay'] as num?)?.toDouble()
+                  ?? (s['fixedMonthlyTotal'] as num?)?.toDouble()
+                  ?? (s['baseSalary'] as num?)?.toDouble() ?? 0,
               s['currency'] as String? ?? 'EUR',
               rates,
             ))
