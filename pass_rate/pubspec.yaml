@@ -2,7 +2,7 @@ name: pass_rate
 description: "PassRate - Pilot Assessment App"
 publish_to: 'none'
 
-version: 1.2.3+8
+version: 1.2.4+9
 
 environment:
   sdk: ^3.7.2
