@@ -62,8 +62,10 @@ class SubmissionsController extends GetxController {
   }
 
   Future<void> deleteSubmission(Map<String, dynamic> submission) async {
-    final bool success = await FirebaseService.deleteSubmission(submission['id'] as String);
+    final String id = submission['id'] as String;
+    final bool success = await FirebaseService.deleteSubmission(id);
     if (success) {
+      feedbackBySubmission.remove(id);
       submissions.remove(submission);
       _filter();
       Get.snackbar('Deleted', 'Submission deleted', snackPosition: SnackPosition.BOTTOM);
@@ -88,6 +90,12 @@ class _SubmissionsScreenState extends State<SubmissionsScreen> {
   void initState() {
     super.initState();
     Get.put(SubmissionsController());
+  }
+
+  @override
+  void dispose() {
+    Get.delete<SubmissionsController>();
+    super.dispose();
   }
 
   @override
@@ -255,7 +263,11 @@ class _SubmissionTile extends StatelessWidget {
             const SizedBox(height: 12),
             const Text('Assessment:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary)),
             const SizedBox(height: 6),
-            ...assessments.map((dynamic a) => Text('- ${a.toString()[0].toUpperCase()}${a.toString().substring(1)}', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary))),
+            ...assessments.map((dynamic a) {
+              final String s = a.toString();
+              final String label = s.isNotEmpty ? '${s[0].toUpperCase()}${s.substring(1)}' : s;
+              return Text('- $label', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary));
+            }),
           ],
           if (feedback != null) ...<Widget>[
             const SizedBox(height: 12),

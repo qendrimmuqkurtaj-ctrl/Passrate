@@ -16,6 +16,7 @@ class SalaryController extends GetxController {
   int mySeniorityYears = 0;
   String myAmountType = '';
   int myFlightHours = 0;
+  String _deviceId = '';
 
   final RxBool isJobHunting = false.obs;
   final RxBool hasError = false.obs;
@@ -145,6 +146,7 @@ class SalaryController extends GetxController {
     final String myNormAmt = _normAmtType(myAmountType);
 
     final List<Map<String, dynamic>> matches = salaries.where((Map<String, dynamic> s) {
+      if (_deviceId.isNotEmpty && s['deviceId'] == _deviceId) return false;
       if (s['rank'] != myRank || s['aircraftType'] != myAircraftType) return false;
       if (_normAmtType(s['amountType'] as String?) != myNormAmt) return false;
 
@@ -266,6 +268,7 @@ class SalaryController extends GetxController {
     try {
       const Duration timeout = Duration(seconds: 10);
       final String deviceId = await FirebaseService.getDeviceId();
+      _deviceId = deviceId;
       final Map<String, dynamic>? submission = await FirebaseService
           .getDeviceSalarySubmission(deviceId)
           .timeout(timeout);
@@ -500,13 +503,16 @@ class SalaryController extends GetxController {
         });
       }
     }
+    const List<String> rankOrder = <String>['SO', 'JFO', 'FO', 'SFO', 'Captain'];
     result.sort((Map<String, dynamic> a, Map<String, dynamic> b) {
       final bool aHas = a['hasData'] as bool? ?? false;
       final bool bHas = b['hasData'] as bool? ?? false;
       if (aHas != bHas) return aHas ? -1 : 1;
       final int cmp = (a['airline'] as String).compareTo(b['airline'] as String);
       if (cmp != 0) return cmp;
-      return (a['rank'] as String).compareTo(b['rank'] as String);
+      final int aRank = rankOrder.indexOf(a['rank'] as String? ?? '');
+      final int bRank = rankOrder.indexOf(b['rank'] as String? ?? '');
+      return aRank.compareTo(bRank);
     });
     return result;
   }
@@ -541,6 +547,12 @@ class _SalaryScreenState extends State<SalaryScreen> {
   void initState() {
     super.initState();
     Get.put(SalaryController());
+  }
+
+  @override
+  void dispose() {
+    Get.delete<SalaryController>();
+    super.dispose();
   }
 
   @override
@@ -1895,7 +1907,7 @@ class _FiltersSheet extends StatelessWidget {
                       child: Obx(() => _SearchableFilterDrop(
                         hint: 'Rank',
                         value: c.filterRank.value.isEmpty ? null : c.filterRank.value,
-                        options: const <String>['SO', 'FO', 'Captain'],
+                        options: const <String>['SO', 'JFO', 'FO', 'SFO', 'Captain'],
                         onChanged: (String? v) => c.filterRank.value = v ?? '',
                         searchable: false,
                       )),

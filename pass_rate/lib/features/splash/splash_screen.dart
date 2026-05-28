@@ -22,7 +22,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _controller.forward();
     Future<void>.delayed(
       const Duration(seconds: 2),
-      () => Get.off(() => const HomeScreen(), transition: Transition.fade),
+      () { if (mounted) Get.off(() => const HomeScreen(), transition: Transition.fade); },
     );
   }
 

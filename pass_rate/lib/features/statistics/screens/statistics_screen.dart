@@ -18,6 +18,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     Get.put(StatisticsController());
   }
 
+  @override
+  void dispose() {
+    Get.delete<StatisticsController>();
+    super.dispose();
+  }
+
   String _yearLabel(int year) => year == 0 ? 'All Time' : '$year';
   String _airlineLabel(String name) => name.isEmpty ? 'All Airlines' : name;
 
@@ -570,7 +576,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                                 border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
                               ),
                               child: Text(
-                                '${a[0].toUpperCase()}${a.substring(1)}',
+                                a.isNotEmpty ? '${a[0].toUpperCase()}${a.substring(1)}' : a,
                                 style: const TextStyle(
                                   color: AppColors.textSecondary,
                                   fontSize: 12,
@@ -617,6 +623,46 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             _skeleton(60),
             const SizedBox(height: 8),
             _skeleton(60),
+          ],
+        );
+      }
+      if (c.hasReviewsError.value) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Text(
+              'Reviews',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.bgCard,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: <Widget>[
+                  const Icon(Icons.wifi_off_outlined, color: AppColors.textMuted, size: 16),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'Could not load reviews.',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: c.retryReviews,
+                    child: const Text('Retry', style: TextStyle(color: AppColors.accent, fontSize: 13)),
+                  ),
+                ],
+              ),
+            ),
           ],
         );
       }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:get/get.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -15,23 +16,35 @@ const _appStoreId = '6754942459';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  try {
+    await FirebaseAppCheck.instance.activate(
+      providerApple: AppleAppAttestWithDeviceCheckFallbackProvider(),
+    );
+  } catch (e) {
+    debugPrint('App Check activation failed: $e');
+  }
   runApp(const PassRateApp());
   WidgetsBinding.instance.addPostFrameCallback((_) => _checkForUpdate());
   WidgetsBinding.instance.addPostFrameCallback((_) => FirebaseService.seedAircraftTypes());
 }
 
 Future<void> _checkForUpdate() async {
+  if (!Platform.isIOS) return;
   try {
     final info = await PackageInfo.fromPlatform();
     final currentVersion = info.version;
 
     final client = HttpClient();
-    final request = await client.getUrl(
-      Uri.parse('https://itunes.apple.com/lookup?id=$_appStoreId'),
-    );
-    final response = await request.close();
-    final body = await response.transform(utf8.decoder).join();
-    client.close();
+    final String body;
+    try {
+      final request = await client.getUrl(
+        Uri.parse('https://itunes.apple.com/lookup?id=$_appStoreId'),
+      );
+      final response = await request.close();
+      body = await response.transform(utf8.decoder).join();
+    } finally {
+      client.close();
+    }
 
     final data = jsonDecode(body) as Map<String, dynamic>;
     final results = data['results'] as List<dynamic>;

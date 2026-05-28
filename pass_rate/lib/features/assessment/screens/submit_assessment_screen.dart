@@ -24,6 +24,12 @@ class _SubmitAssessmentScreenState extends State<SubmitAssessmentScreen> {
   }
 
   @override
+  void dispose() {
+    Get.delete<AssessmentController>();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,

@@ -11,6 +11,7 @@ class StatisticsController extends GetxController {
   final RxBool hasPassRateError = false.obs;
   final RxBool hasSubmissionError = false.obs;
   final RxBool isLoadingReviews = false.obs;
+  final RxBool hasReviewsError = false.obs;
 
   final RxList<Map<String, dynamic>> topByPassRate = <Map<String, dynamic>>[].obs;
   final RxList<Map<String, dynamic>> topBySubmission = <Map<String, dynamic>>[].obs;
@@ -70,6 +71,7 @@ class StatisticsController extends GetxController {
     hasSearched.value = false;
     hasSearchError.value = false;
     airlineReviews.clear();
+    hasReviewsError.value = false;
     try {
       airlineStats.value = await FirebaseService.getAirlineStatistics(
         airlineName: selectedAirlineName.value,
@@ -91,6 +93,7 @@ class StatisticsController extends GetxController {
 
   Future<void> _loadReviews() async {
     isLoadingReviews.value = true;
+    hasReviewsError.value = false;
     try {
       if (_deviceId.isEmpty) _deviceId = await FirebaseService.getDeviceId();
       final List<dynamic> results = await Future.wait(<Future<dynamic>>[
@@ -99,9 +102,13 @@ class StatisticsController extends GetxController {
       ]);
       airlineReviews.value = results[0] as List<Map<String, dynamic>>;
       myUpvotedIds.value = results[1] as List<String>;
-    } catch (_) {}
+    } catch (_) {
+      hasReviewsError.value = true;
+    }
     isLoadingReviews.value = false;
   }
+
+  Future<void> retryReviews() => _loadReviews();
 
   Future<void> toggleUpvote(String feedbackId) async {
     if (_deviceId.isEmpty) _deviceId = await FirebaseService.getDeviceId();

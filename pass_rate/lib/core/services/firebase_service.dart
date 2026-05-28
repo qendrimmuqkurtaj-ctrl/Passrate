@@ -353,12 +353,10 @@ class FirebaseService {
       currentDocId: docRef.id,
       amountType: amountType ?? '',
     );
-    if (flagReason != null) {
-      await docRef.update(<String, dynamic>{
-        'flagged': true,
-        'flagReason': flagReason,
-      });
-    }
+    await docRef.update(<String, dynamic>{
+      'flagged': flagReason != null,
+      'flagReason': flagReason ?? FieldValue.delete(),
+    });
   }
 
   static Future<Map<String, double>> fetchRates() async {
@@ -366,13 +364,19 @@ class FirebaseService {
     Map<String, double> rates = <String, double>{};
     try {
       final HttpClient client = HttpClient();
-      final HttpClientRequest request = await client.getUrl(
-        Uri.parse('https://open.er-api.com/v6/latest/EUR'),
-      );
-      final HttpClientResponse response = await request.close();
-      if (response.statusCode == 200) {
-        final String body = await response.transform(utf8.decoder).join();
+      String? body;
+      try {
+        final HttpClientRequest request = await client.getUrl(
+          Uri.parse('https://open.er-api.com/v6/latest/EUR'),
+        );
+        final HttpClientResponse response = await request.close();
+        if (response.statusCode == 200) {
+          body = await response.transform(utf8.decoder).join();
+        }
+      } finally {
         client.close();
+      }
+      if (body != null) {
         final Map<String, dynamic> json = jsonDecode(body) as Map<String, dynamic>;
         if (json['result'] == 'success') {
           final Map<String, dynamic> r = json['rates'] as Map<String, dynamic>;
@@ -381,8 +385,6 @@ class FirebaseService {
           final SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setString('cached_eur_rates', jsonEncode(rates));
         }
-      } else {
-        client.close();
       }
     } catch (_) {}
 
@@ -440,33 +442,37 @@ class FirebaseService {
             _normalizeAmountType(s['amountType'] as String?) == normalizedType)
         .toList();
 
-    if (rank == 'SO') {
-      final Iterable<double> foSalaries = others
-          .where((Map<String, dynamic> s) => s['rank'] == 'FO')
-          .map((Map<String, dynamic> s) => _toEurAmount(
-                (s['guaranteedMonthlyPay'] as num?)?.toDouble()
-                    ?? (s['fixedMonthlyTotal'] as num?)?.toDouble()
-                    ?? (s['baseSalary'] as num?)?.toDouble() ?? 0,
-                s['currency'] as String? ?? 'EUR',
-                rates,
-              ));
-      if (foSalaries.any((double fo) => guaranteedEur > fo)) {
-        return 'SO salary higher than FO at same airline';
+    const List<String> rankOrder = <String>['SO', 'JFO', 'FO', 'SFO', 'Captain'];
+    final int myIdx = rankOrder.indexOf(rank);
+    if (myIdx >= 0) {
+      double salEur(Map<String, dynamic> s) => _toEurAmount(
+            (s['guaranteedMonthlyPay'] as num?)?.toDouble()
+                ?? (s['fixedMonthlyTotal'] as num?)?.toDouble()
+                ?? (s['baseSalary'] as num?)?.toDouble() ?? 0,
+            s['currency'] as String? ?? 'EUR',
+            rates,
+          );
+      // Salary must not exceed any higher-ranked pilot at the same airline.
+      for (int i = myIdx + 1; i < rankOrder.length; i++) {
+        final String higherRank = rankOrder[i];
+        final Iterable<double> higherSals = others
+            .where((Map<String, dynamic> s) => s['rank'] == higherRank)
+            .map(salEur)
+            .where((double v) => v > 0);
+        if (higherSals.any((double hi) => guaranteedEur > hi)) {
+          return '$rank salary higher than $higherRank at same airline';
+        }
       }
-    }
-
-    if (rank == 'Captain') {
-      final Iterable<double> foSalaries = others
-          .where((Map<String, dynamic> s) => s['rank'] == 'FO')
-          .map((Map<String, dynamic> s) => _toEurAmount(
-                (s['guaranteedMonthlyPay'] as num?)?.toDouble()
-                    ?? (s['fixedMonthlyTotal'] as num?)?.toDouble()
-                    ?? (s['baseSalary'] as num?)?.toDouble() ?? 0,
-                s['currency'] as String? ?? 'EUR',
-                rates,
-              ));
-      if (foSalaries.any((double fo) => guaranteedEur < fo)) {
-        return 'Captain salary lower than FO at same airline';
+      // Salary must not fall below any lower-ranked pilot at the same airline.
+      for (int i = myIdx - 1; i >= 0; i--) {
+        final String lowerRank = rankOrder[i];
+        final Iterable<double> lowerSals = others
+            .where((Map<String, dynamic> s) => s['rank'] == lowerRank)
+            .map(salEur)
+            .where((double v) => v > 0);
+        if (lowerSals.any((double lo) => guaranteedEur < lo)) {
+          return '$rank salary lower than $lowerRank at same airline';
+        }
       }
     }
 
@@ -590,19 +596,6 @@ class FirebaseService {
     }
   }
 
-  static Future<bool> hasDeviceSubmittedFeedback(String deviceId) async {
-    try {
-      final QuerySnapshot snap = await _db
-          .collection('feedback')
-          .where('deviceId', isEqualTo: deviceId)
-          .limit(1)
-          .get();
-      return snap.docs.isNotEmpty;
-    } catch (_) {
-      return false;
-    }
-  }
-
   static Future<void> updateSalaryTimestamp(String docId) async {
     try {
       await _db.collection('salaries').doc(docId).update(<String, dynamic>{
@@ -669,16 +662,6 @@ class FirebaseService {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setBool('aircraft_types_seeded', true);
     } catch (_) {}
-  }
-
-  static Future<int> getTotalSubmissionsCount() async {
-    try {
-      final AggregateQuerySnapshot snap =
-          await _db.collection('submissions').count().get();
-      return snap.count ?? 0;
-    } catch (e) {
-      return 0;
-    }
   }
 
   static Future<List<Map<String, dynamic>>> getTopAirlinesBySubmission(int year) async {

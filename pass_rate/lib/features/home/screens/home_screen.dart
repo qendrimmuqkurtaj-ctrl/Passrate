@@ -101,7 +101,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     label: 'Submit Assessment',
                     icon: Icons.touch_app_outlined,
                     iconColor: AppColors.accent,
-                    isPrimary: false,
                     onTap: () => Get.to(() => const SubmitAssessmentScreen()),
                   )),
                   const SizedBox(height: 12),
@@ -109,7 +108,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     label: 'Pass Rates',
                     icon: Icons.bar_chart_outlined,
                     iconColor: AppColors.accent,
-                    isPrimary: false,
                     onTap: () => Get.to(() => const StatisticsScreen()),
                   )),
                   const SizedBox(height: 12),
@@ -117,7 +115,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     label: 'Your Submissions',
                     icon: Icons.description_outlined,
                     iconColor: AppColors.accent,
-                    isPrimary: false,
                     onTap: () => Get.to(() => const SubmissionsScreen()),
                   )),
                   const SizedBox(height: 12),
@@ -125,7 +122,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     label: 'Pilot Salaries',
                     icon: Icons.monetization_on_outlined,
                     iconColor: AppColors.accent,
-                    isPrimary: false,
                     onTap: () => Get.to(() => const SalaryScreen()),
                   )),
                   const Spacer(),
@@ -147,26 +143,17 @@ class _HomeTile extends StatelessWidget {
   final String label;
   final IconData icon;
   final Color iconColor;
-  final bool isPrimary;
   final VoidCallback onTap;
 
   const _HomeTile({
     required this.label,
     required this.icon,
     required this.iconColor,
-    required this.isPrimary,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final double containerSize = isPrimary ? 48 : 42;
-    final double iconSize     = isPrimary ? 24 : 20;
-    final double vertPad      = isPrimary ? 22 : 16;
-    final double bgAlpha      = isPrimary ? 0.12 : 0.08;
-    final double borderAlpha  = isPrimary ? 0.30 : 0.20;
-    final double radius       = isPrimary ? 12 : 10;
-
     return Material(
       color: AppColors.bgCard,
       borderRadius: BorderRadius.circular(12),
@@ -176,7 +163,7 @@ class _HomeTile extends StatelessWidget {
         onTap: onTap,
         child: Container(
           width: double.infinity,
-          padding: EdgeInsets.symmetric(horizontal: 20, vertical: vertPad),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.border),
@@ -184,15 +171,15 @@ class _HomeTile extends StatelessWidget {
           child: Row(
             children: <Widget>[
               Container(
-                width: containerSize,
-                height: containerSize,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: bgAlpha),
-                  borderRadius: BorderRadius.circular(radius),
-                  border: Border.all(color: iconColor.withValues(alpha: borderAlpha)),
+                  color: iconColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: iconColor.withValues(alpha: 0.20)),
                 ),
                 child: Center(
-                  child: Icon(icon, color: iconColor, size: iconSize),
+                  child: Icon(icon, color: iconColor, size: 20),
                 ),
               ),
               const SizedBox(width: 16),

@@ -1,0 +1,132 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Architecture note ──────────────────────────────────────────────────────
+    // This app identifies users by a deviceId string, not Firebase Auth.
+    // Firestore rules cannot cryptographically verify the caller's identity
+    // without auth, so ownership checks below are structural (data-shape
+    // validation) rather than true access control. The rules still prevent
+    // malformed writes and lock down immutable collections. Upgrading to
+    // Firebase Authentication is the correct path to real write isolation.
+    // ──────────────────────────────────────────────────────────────────────────
+
+
+    // ── Reference data (admin-managed) ────────────────────────────────────────
+    // Read by all. Write is open because the admin panel has no auth.
+    // Minimum validation: name must be a non-empty string; prevents blank docs.
+
+    match /airlines/{doc} {
+      allow read: if true;
+      allow create, update: if request.resource.data.name is string
+                            && request.resource.data.name.size() > 0;
+      allow delete: if true;
+    }
+
+    match /tasks/{doc} {
+      allow read: if true;
+      allow create, update: if request.resource.data.name is string
+                            && request.resource.data.name.size() > 0;
+      allow delete: if true;
+    }
+
+    match /aircraftTypes/{doc} {
+      allow read: if true;
+      allow create, update: if request.resource.data.name is string
+                            && request.resource.data.name.size() > 0;
+      allow delete: if true;
+    }
+
+    match /countries/{doc} {
+      allow read: if true;
+      allow create, update: if request.resource.data.name is string
+                            && request.resource.data.name.size() > 0
+                            && request.resource.data.cities is list;
+      allow delete: if true;
+    }
+
+
+    // ── Assessment submissions ─────────────────────────────────────────────────
+    // Public read (anonymous stats). Create requires core fields with correct
+    // types. Immutable after creation — no updates ever allowed. Delete open
+    // (cascade from app and admin; ownership not enforceable without auth).
+
+    match /submissions/{doc} {
+      allow read: if true;
+      allow create: if request.resource.data.deviceId is string
+                    && request.resource.data.deviceId.size() > 0
+                    && request.resource.data.airline is string
+                    && request.resource.data.airline.size() > 0
+                    && request.resource.data.year is int
+                    && request.resource.data.month is int
+                    && request.resource.data.month >= 1
+                    && request.resource.data.month <= 12
+                    && request.resource.data.passed is bool;
+      allow update: if false;
+      allow delete: if true;
+    }
+
+
+    // ── Salary reports ─────────────────────────────────────────────────────────
+    // Public read. Create and update require a valid rank and a positive salary
+    // (prevents zero/negative submissions). The flag update (after create) is
+    // an update on a just-written doc — the merged document still satisfies
+    // these constraints. Delete open (app + admin).
+
+    match /salaries/{doc} {
+      allow read: if true;
+      allow create: if request.resource.data.deviceId is string
+                    && request.resource.data.deviceId.size() > 0
+                    && request.resource.data.airline is string
+                    && request.resource.data.airline.size() > 0
+                    && request.resource.data.rank is string
+                    && request.resource.data.rank.size() > 0
+                    && request.resource.data.guaranteedMonthlyPay is number
+                    && request.resource.data.guaranteedMonthlyPay > 0;
+      allow update: if request.resource.data.rank is string
+                    && request.resource.data.rank.size() > 0
+                    && request.resource.data.guaranteedMonthlyPay is number
+                    && request.resource.data.guaranteedMonthlyPay > 0;
+      allow delete: if true;
+    }
+
+
+    // ── Feedback ───────────────────────────────────────────────────────────────
+    // Public read. Create enforces sentiment enum, zero initial upvotes, and
+    // flagged:false — prevents clients from submitting pre-upvoted or pre-flagged
+    // reviews. Updates are locked to the three fields the app and admin ever
+    // touch (upvoteCount, flagged, flagReason); any attempt to change airlineName,
+    // deviceId, sentiment, or text after creation is rejected. Delete open.
+
+    match /feedback/{doc} {
+      allow read: if true;
+      allow create: if request.resource.data.deviceId is string
+                    && request.resource.data.deviceId.size() > 0
+                    && request.resource.data.airlineName is string
+                    && request.resource.data.airlineName.size() > 0
+                    && request.resource.data.sentiment in ['good', 'neutral', 'hard']
+                    && request.resource.data.upvoteCount == 0
+                    && request.resource.data.flagged == false;
+      allow update: if request.resource.data.diff(resource.data).affectedKeys()
+                        .hasOnly(['upvoteCount', 'flagged', 'flagReason']);
+      allow delete: if true;
+    }
+
+
+    // ── Feedback upvotes ───────────────────────────────────────────────────────
+    // Public read. Create requires both reference fields to be non-empty strings.
+    // Immutable after creation (the app only creates or deletes, never updates).
+    // Delete open (toggle flow removes the doc to un-upvote).
+
+    match /feedback_upvotes/{doc} {
+      allow read: if true;
+      allow create: if request.resource.data.feedbackId is string
+                    && request.resource.data.feedbackId.size() > 0
+                    && request.resource.data.deviceId is string
+                    && request.resource.data.deviceId.size() > 0;
+      allow update: if false;
+      allow delete: if true;
+    }
+
+  }
+}

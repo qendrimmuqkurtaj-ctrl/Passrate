@@ -242,6 +242,12 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
   }
 
   @override
+  void dispose() {
+    Get.delete<SubmitSalaryController>();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final SubmitSalaryController c = Get.find<SubmitSalaryController>();
     final String title = widget.existingDocId != null ? 'Update Salary' : 'Submit Salary';
@@ -304,7 +310,7 @@ class _SubmitSalaryScreenState extends State<SubmitSalaryScreen> {
                     Obx(() => _OptionDrop(
                       hint: 'Select Rank',
                       value: c.selectedRank.value.isEmpty ? null : c.selectedRank.value,
-                      options: const <String>['SO', 'FO', 'Captain'],
+                      options: const <String>['SO', 'JFO', 'FO', 'SFO', 'Captain'],
                       onChanged: (String? v) {
                         if (v != null) { c.selectedRank.value = v; c.update(); }
                       },

@@ -21,16 +21,6 @@ class AssessmentController extends GetxController {
 
   final TextEditingController dateController = TextEditingController();
 
-  // Progress tracking
-  RxDouble get completionPercentage {
-    int steps = 0;
-    if (selectedAirline.value != null) steps++;
-    if (dateController.text.isNotEmpty) steps++;
-    if (selectedTaskIds.isNotEmpty) steps++;
-    if (passed.value != null) steps++;
-    return RxDouble(steps / 4);
-  }
-
   bool get allCompleted =>
       selectedAirline.value != null &&
       dateController.text.isNotEmpty &&
