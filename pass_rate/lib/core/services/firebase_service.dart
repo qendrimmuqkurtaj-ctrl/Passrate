@@ -125,7 +125,16 @@ class FirebaseService {
 
   static Future<bool> deleteSubmission(String id) async {
     try {
-      await _db.collection('submissions').doc(id).delete();
+      final QuerySnapshot fbSnap = await _db
+          .collection('feedback')
+          .where('submissionId', isEqualTo: id)
+          .get();
+      final WriteBatch batch = _db.batch();
+      for (final DocumentSnapshot doc in fbSnap.docs) {
+        batch.delete(doc.reference);
+      }
+      batch.delete(_db.collection('submissions').doc(id));
+      await batch.commit();
       return true;
     } catch (e) {
       return false;
@@ -265,7 +274,7 @@ class FirebaseService {
       final String name = data['name'] as String? ?? '';
       final List<dynamic> cities = data['cities'] as List<dynamic>? ?? <dynamic>[];
       if (name.isNotEmpty) {
-        result[name] = cities.map((dynamic c) => c.toString()).toList();
+        result[name] = (cities.map((dynamic c) => c.toString()).toList()..sort());
       }
     }
     return result;
@@ -302,7 +311,7 @@ class FirebaseService {
     String? amountType,
     int? totalFlightHours,
   }) async {
-    final Map<String, dynamic> data = <String, dynamic>{
+    final Map<String, dynamic> baseData = <String, dynamic>{
       'deviceId': deviceId,
       'airlineId': airlineId,
       'airline': airlineName,
@@ -314,17 +323,25 @@ class FirebaseService {
       'country': country,
       'base': base,
       'currency': currency,
-      'createdAt': FieldValue.serverTimestamp(),
-      if (allInMonthlyEstimate != null) 'allInMonthlyEstimate': allInMonthlyEstimate,
-      if (amountType != null && amountType.isNotEmpty) 'amountType': amountType,
-      if (totalFlightHours != null) 'totalFlightHours': totalFlightHours,
     };
     final DocumentReference docRef;
     if (existingDocId != null) {
       docRef = _db.collection('salaries').doc(existingDocId);
-      await docRef.set(data);
+      await docRef.update(<String, dynamic>{
+        ...baseData,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'allInMonthlyEstimate': allInMonthlyEstimate ?? FieldValue.delete(),
+        'amountType': (amountType != null && amountType.isNotEmpty) ? amountType : FieldValue.delete(),
+        'totalFlightHours': totalFlightHours ?? FieldValue.delete(),
+      });
     } else {
-      docRef = await _db.collection('salaries').add(data);
+      docRef = await _db.collection('salaries').add(<String, dynamic>{
+        ...baseData,
+        'createdAt': FieldValue.serverTimestamp(),
+        if (allInMonthlyEstimate != null) 'allInMonthlyEstimate': allInMonthlyEstimate,
+        if (amountType != null && amountType.isNotEmpty) 'amountType': amountType,
+        if (totalFlightHours != null) 'totalFlightHours': totalFlightHours,
+      });
     }
 
     final String? flagReason = await _checkSalaryFlags(
@@ -344,8 +361,7 @@ class FirebaseService {
     }
   }
 
-  // Fetches EUR exchange rates with SharedPreferences cache fallback.
-  static Future<Map<String, double>> _fetchRates() async {
+  static Future<Map<String, double>> fetchRates() async {
     bool apiSuccess = false;
     Map<String, double> rates = <String, double>{};
     try {
@@ -402,7 +418,7 @@ class FirebaseService {
     required String currentDocId,
     required String amountType,
   }) async {
-    final Map<String, double> rates = await _fetchRates();
+    final Map<String, double> rates = await fetchRates();
 
     // Skip all EUR-conversion checks if rates are unavailable.
     if (rates.isEmpty && currency != 'EUR') return null;
@@ -596,6 +612,10 @@ class FirebaseService {
   }
 
   static Future<void> seedAircraftTypes() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool('aircraft_types_seeded') == true) return;
+    } catch (_) {}
     const List<Map<String, String>> types = <Map<String, String>>[
       // Airbus – Narrowbody
       {'name': 'A220', 'manufacturer': 'Airbus', 'category': 'Narrowbody'},
@@ -646,6 +666,8 @@ class FirebaseService {
         }
       }
       if (added > 0) await batch.commit();
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('aircraft_types_seeded', true);
     } catch (_) {}
   }
 

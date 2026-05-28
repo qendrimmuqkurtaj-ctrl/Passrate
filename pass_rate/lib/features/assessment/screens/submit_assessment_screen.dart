@@ -505,7 +505,7 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.accent),
-          onPressed: () => Get.back(),
+          onPressed: () { widget.controller.reset(); Get.back(); },
         ),
         title: const Text(
           'Submit Result',

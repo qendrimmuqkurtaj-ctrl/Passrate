@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'onboarding_screen.dart';
+import '../home/screens/home_screen.dart';
 import '../../../core/design/app_colors.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -22,7 +22,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _controller.forward();
     Future<void>.delayed(
       const Duration(seconds: 2),
-      () => Get.off(() => const OnboardingScreen(), transition: Transition.fade),
+      () => Get.off(() => const HomeScreen(), transition: Transition.fade),
     );
   }
 
