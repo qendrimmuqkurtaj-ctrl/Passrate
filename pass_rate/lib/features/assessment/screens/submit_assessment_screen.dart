@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../controllers/assessment_controller.dart';
 import '../../../core/design/app_colors.dart';
+import '../../../core/services/firebase_service.dart';
+import '../../feedback/feedback_sheet.dart';
 import '../../home/screens/home_screen.dart';
 import '../../statistics/screens/statistics_screen.dart';
 
@@ -455,10 +457,34 @@ class _SubmitAssessmentScreenState extends State<SubmitAssessmentScreen> {
 
 // ── Confirm screen ─────────────────────────────────────────────────────────────
 
-class ConfirmScreen extends StatelessWidget {
+class ConfirmScreen extends StatefulWidget {
   final Map<String, dynamic> result;
   final AssessmentController controller;
   const ConfirmScreen({super.key, required this.result, required this.controller});
+
+  @override
+  State<ConfirmScreen> createState() => _ConfirmScreenState();
+}
+
+class _ConfirmScreenState extends State<ConfirmScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 600), _showFeedback);
+  }
+
+  Future<void> _showFeedback() async {
+    if (!mounted) return;
+    final String deviceId = await FirebaseService.getDeviceId();
+    if (!mounted) return;
+    await FeedbackBottomSheet.show(
+      context,
+      airlineId: widget.result['airlineId'] as String? ?? '',
+      airlineName: widget.result['airlineName'] as String,
+      deviceId: deviceId,
+      submissionId: widget.result['id'] as String?,
+    );
+  }
 
   Color _rateColor(double rate) {
     if (rate >= 80) return AppColors.passText;
@@ -468,8 +494,8 @@ class ConfirmScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double successRate = result['successRate'] as double;
-    final int total = result['totalResponse'] as int;
+    final double successRate = widget.result['successRate'] as double;
+    final int total = widget.result['totalResponse'] as int;
     final Color rateColor = _rateColor(successRate);
 
     return Scaffold(
@@ -531,7 +557,7 @@ class ConfirmScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
                             Text(
-                              result['airlineName'] as String? ?? '',
+                              widget.result['airlineName'] as String? ?? '',
                               style: const TextStyle(
                                 color: AppColors.textPrimary,
                                 fontWeight: FontWeight.bold,
@@ -540,7 +566,7 @@ class ConfirmScreen extends StatelessWidget {
                             ),
                             Text(
                               DateFormat('MMMM yyyy').format(
-                                DateTime(result['year'] as int, result['month'] as int),
+                                DateTime(widget.result['year'] as int, widget.result['month'] as int),
                               ),
                               style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
                             ),
@@ -585,7 +611,7 @@ class ConfirmScreen extends StatelessWidget {
               children: <Widget>[
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () { controller.reset(); Get.back(); },
+                    onPressed: () { widget.controller.reset(); Get.back(); },
                     child: const Text('Submit Another'),
                   ),
                 ),
@@ -769,7 +795,7 @@ class _AirlineSearchSheetState extends State<_AirlineSearchSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: TextField(
               controller: _ctrl,
-              autofocus: true,
+              autofocus: false,
               style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'Search...',

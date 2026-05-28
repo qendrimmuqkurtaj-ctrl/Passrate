@@ -1790,7 +1790,7 @@ class _FilterSearchSheetState extends State<_FilterSearchSheet> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: TextField(
                 controller: _ctrl,
-                autofocus: true,
+                autofocus: false,
                 style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
                 decoration: InputDecoration(
                   hintText: 'Search...',

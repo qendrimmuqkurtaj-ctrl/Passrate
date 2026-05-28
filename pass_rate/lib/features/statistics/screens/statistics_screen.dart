@@ -589,7 +589,218 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           ),
         ),
         const SizedBox(height: 16),
+        _buildReviewsSection(c),
+        const SizedBox(height: 8),
       ],
+    );
+  }
+
+  // ── Reviews section ───────────────────────────────────────────────────────
+
+  Widget _buildReviewsSection(StatisticsController c) {
+    return Obx(() {
+      final bool isSpecificAirline = c.selectedAirlineName.value.isNotEmpty;
+      if (!isSpecificAirline) return const SizedBox.shrink();
+      if (c.isLoadingReviews.value) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Text(
+              'Reviews',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            _skeleton(60),
+            const SizedBox(height: 8),
+            _skeleton(60),
+          ],
+        );
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              const Text(
+                'Reviews',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              if (c.airlineReviews.isNotEmpty) ...<Widget>[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.bgCard,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Text(
+                    '${c.airlineReviews.length}',
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (c.airlineReviews.isEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.bgCard,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: const Row(
+                children: <Widget>[
+                  Icon(Icons.chat_bubble_outline,
+                      color: AppColors.textMuted, size: 16),
+                  SizedBox(width: 10),
+                  Text(
+                    'No reviews yet for this airline.',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...c.airlineReviews.map(
+              (Map<String, dynamic> review) => _buildReviewCard(c, review),
+            ),
+        ],
+      );
+    });
+  }
+
+  Widget _buildReviewCard(StatisticsController c, Map<String, dynamic> review) {
+    final String id = review['id'] as String;
+    final String sentiment = review['sentiment'] as String? ?? 'neutral';
+    final String text = review['text'] as String? ?? '';
+    final int upvotes = review['upvoteCount'] as int? ?? 0;
+    final bool isUpvoted = c.myUpvotedIds.contains(id);
+
+    Color sentimentColor;
+    Color sentimentBg;
+    String sentimentEmoji;
+    String sentimentLabel;
+    if (sentiment == 'good') {
+      sentimentColor = AppColors.passText;
+      sentimentBg = AppColors.passBg;
+      sentimentEmoji = '😊';
+      sentimentLabel = 'Good';
+    } else if (sentiment == 'hard') {
+      sentimentColor = AppColors.failText;
+      sentimentBg = AppColors.failBg;
+      sentimentEmoji = '😓';
+      sentimentLabel = 'Hard';
+    } else {
+      sentimentColor = const Color(0xFFE8A020);
+      sentimentBg = const Color(0xFFE8A020).withValues(alpha: 0.12);
+      sentimentEmoji = '😐';
+      sentimentLabel = 'Neutral';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.bgCard,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: sentimentBg,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(sentimentEmoji,
+                      style: const TextStyle(fontSize: 14)),
+                  const SizedBox(width: 4),
+                  Text(
+                    sentimentLabel,
+                    style: TextStyle(
+                      color: sentimentColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: text.isNotEmpty
+                  ? Text(
+                      text,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () => c.toggleUpvote(id),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(
+                  color: isUpvoted
+                      ? AppColors.accent.withValues(alpha: 0.15)
+                      : AppColors.bgPrimary,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: isUpvoted ? AppColors.accent : AppColors.border,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Icon(
+                      isUpvoted ? Icons.thumb_up : Icons.thumb_up_outlined,
+                      size: 13,
+                      color: isUpvoted ? AppColors.accent : AppColors.textMuted,
+                    ),
+                    if (upvotes > 0) ...<Widget>[
+                      const SizedBox(width: 4),
+                      Text(
+                        '$upvotes',
+                        style: TextStyle(
+                          color:
+                              isUpvoted ? AppColors.accent : AppColors.textMuted,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -914,7 +1125,7 @@ class _AirlineSearchSheetState extends State<_AirlineSearchSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: TextField(
               controller: _ctrl,
-              autofocus: true,
+              autofocus: false,
               style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'Search...',

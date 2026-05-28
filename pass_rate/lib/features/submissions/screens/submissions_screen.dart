@@ -12,6 +12,7 @@ class SubmissionsController extends GetxController {
   final RxList<Map<String, dynamic>> filtered = <Map<String, dynamic>>[].obs;
   final TextEditingController searchController = TextEditingController();
   final RxString searchQuery = ''.obs;
+  final Map<String, Map<String, dynamic>> feedbackBySubmission = <String, Map<String, dynamic>>{};
 
   @override
   void onInit() {
@@ -31,7 +32,14 @@ class SubmissionsController extends GetxController {
     hasError.value = false;
     try {
       final String deviceId = await FirebaseService.getDeviceId();
-      submissions.value = await FirebaseService.getMySubmissions(deviceId);
+      final List<dynamic> results = await Future.wait(<Future<dynamic>>[
+        FirebaseService.getMySubmissions(deviceId),
+        FirebaseService.getMyFeedbackBySubmission(deviceId),
+      ]);
+      submissions.value = results[0] as List<Map<String, dynamic>>;
+      feedbackBySubmission
+        ..clear()
+        ..addAll(results[1] as Map<String, Map<String, dynamic>>);
       _filter();
     } catch (_) {
       hasError.value = true;
@@ -155,7 +163,13 @@ class _SubmissionsScreenState extends State<SubmissionsScreen> {
                   separatorBuilder: (BuildContext _, int __) => const SizedBox(height: 12),
                   itemBuilder: (BuildContext context, int i) {
                     final Map<String, dynamic> sub = c.filtered[i];
-                    return _SubmissionTile(submission: sub, onDelete: () => _confirmDelete(context, c, sub));
+                    final Map<String, dynamic>? feedback =
+                        c.feedbackBySubmission[sub['id'] as String? ?? ''];
+                    return _SubmissionTile(
+                      submission: sub,
+                      feedback: feedback,
+                      onDelete: () => _confirmDelete(context, c, sub),
+                    );
                   },
                 );
               }),
@@ -192,8 +206,9 @@ class _SubmissionsScreenState extends State<SubmissionsScreen> {
 
 class _SubmissionTile extends StatelessWidget {
   final Map<String, dynamic> submission;
+  final Map<String, dynamic>? feedback;
   final VoidCallback onDelete;
-  const _SubmissionTile({required this.submission, required this.onDelete});
+  const _SubmissionTile({required this.submission, this.feedback, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -242,8 +257,65 @@ class _SubmissionTile extends StatelessWidget {
             const SizedBox(height: 6),
             ...assessments.map((dynamic a) => Text('- ${a.toString()[0].toUpperCase()}${a.toString().substring(1)}', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary))),
           ],
+          if (feedback != null) ...<Widget>[
+            const SizedBox(height: 12),
+            const Divider(color: AppColors.border, height: 1),
+            const SizedBox(height: 10),
+            _FeedbackRow(feedback: feedback!),
+          ],
         ],
       ),
+    );
+  }
+}
+
+class _FeedbackRow extends StatelessWidget {
+  final Map<String, dynamic> feedback;
+  const _FeedbackRow({required this.feedback});
+
+  @override
+  Widget build(BuildContext context) {
+    final String sentiment = feedback['sentiment'] as String? ?? 'neutral';
+    final String text = feedback['text'] as String? ?? '';
+
+    String emoji;
+    String label;
+    Color color;
+    Color bg;
+    if (sentiment == 'good') {
+      emoji = '😊'; label = 'Good'; color = AppColors.passText; bg = AppColors.passBg;
+    } else if (sentiment == 'hard') {
+      emoji = '😓'; label = 'Hard'; color = AppColors.failText; bg = AppColors.failBg;
+    } else {
+      emoji = '😐'; label = 'Neutral'; color = const Color(0xFFE8A020); bg = const Color(0xFFE8A020).withValues(alpha: 0.12);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(emoji, style: const TextStyle(fontSize: 13)),
+                  const SizedBox(width: 4),
+                  Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text('Your review', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+          ],
+        ),
+        if (text.isNotEmpty) ...<Widget>[
+          const SizedBox(height: 5),
+          Text(text, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+        ],
+      ],
     );
   }
 }

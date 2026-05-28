@@ -96,6 +96,7 @@ class FirebaseService {
 
     return {
       'id': ref.id,
+      'airlineId': airlineId,
       'airlineName': airlineName,
       'year': year,
       'month': month,
@@ -471,6 +472,119 @@ class FirebaseService {
     }
 
     return null;
+  }
+
+  static Future<String?> submitFeedback({
+    required String airlineId,
+    required String airlineName,
+    required String sentiment,
+    required String deviceId,
+    String? text,
+    String? submissionId,
+  }) async {
+    try {
+      final DocumentReference ref = await _db.collection('feedback').add(<String, dynamic>{
+        'airlineId': airlineId,
+        'airlineName': airlineName,
+        'sentiment': sentiment,
+        'deviceId': deviceId,
+        'text': text ?? '',
+        'upvoteCount': 0,
+        'flagged': false,
+        'createdAt': FieldValue.serverTimestamp(),
+        if (submissionId != null && submissionId.isNotEmpty) 'submissionId': submissionId,
+      });
+      return ref.id;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<Map<String, Map<String, dynamic>>> getMyFeedbackBySubmission(String deviceId) async {
+    try {
+      final QuerySnapshot snap = await _db
+          .collection('feedback')
+          .where('deviceId', isEqualTo: deviceId)
+          .get();
+      final Map<String, Map<String, dynamic>> result = <String, Map<String, dynamic>>{};
+      for (final DocumentSnapshot doc in snap.docs) {
+        final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        final String? subId = data['submissionId'] as String?;
+        if (subId != null && subId.isNotEmpty) {
+          result[subId] = <String, dynamic>{'id': doc.id, ...data};
+        }
+      }
+      return result;
+    } catch (_) {
+      return <String, Map<String, dynamic>>{};
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getAirlineFeedback(String airlineName) async {
+    try {
+      final QuerySnapshot snap = await _db
+          .collection('feedback')
+          .where('airlineName', isEqualTo: airlineName)
+          .get();
+      final List<Map<String, dynamic>> list = snap.docs
+          .map((DocumentSnapshot d) => <String, dynamic>{'id': d.id, ...d.data() as Map<String, dynamic>})
+          .where((Map<String, dynamic> d) => d['flagged'] != true)
+          .toList();
+      list.sort((Map<String, dynamic> a, Map<String, dynamic> b) =>
+          (b['upvoteCount'] as int? ?? 0).compareTo(a['upvoteCount'] as int? ?? 0));
+      return list;
+    } catch (_) {
+      return <Map<String, dynamic>>[];
+    }
+  }
+
+  static Future<void> toggleFeedbackUpvote({
+    required String feedbackId,
+    required String deviceId,
+  }) async {
+    final String docId = '${feedbackId}_$deviceId';
+    final DocumentReference upvoteRef = _db.collection('feedback_upvotes').doc(docId);
+    final DocumentReference feedbackRef = _db.collection('feedback').doc(feedbackId);
+    final DocumentSnapshot upvoteSnap = await upvoteRef.get();
+    if (upvoteSnap.exists) {
+      await upvoteRef.delete();
+      await feedbackRef.update(<String, dynamic>{'upvoteCount': FieldValue.increment(-1)});
+    } else {
+      await upvoteRef.set(<String, dynamic>{
+        'feedbackId': feedbackId,
+        'deviceId': deviceId,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      await feedbackRef.update(<String, dynamic>{'upvoteCount': FieldValue.increment(1)});
+    }
+  }
+
+  static Future<List<String>> getMyUpvotedFeedbackIds(String deviceId) async {
+    try {
+      final QuerySnapshot snap = await _db
+          .collection('feedback_upvotes')
+          .where('deviceId', isEqualTo: deviceId)
+          .get();
+      return snap.docs
+          .map((DocumentSnapshot d) =>
+              (d.data() as Map<String, dynamic>)['feedbackId'] as String)
+          .toList();
+    } catch (_) {
+      return <String>[];
+    }
+  }
+
+  static Future<bool> hasDeviceSubmittedFeedback(String deviceId) async {
+    try {
+      final QuerySnapshot snap = await _db
+          .collection('feedback')
+          .where('deviceId', isEqualTo: deviceId)
+          .limit(1)
+          .get();
+      return snap.docs.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
   }
 
   static Future<void> updateSalaryTimestamp(String docId) async {

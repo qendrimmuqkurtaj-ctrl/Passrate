@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../assessment/screens/submit_assessment_screen.dart';
+import '../../feedback/feedback_prompt_card.dart';
 import '../../salary/screens/salary_screen.dart';
 import '../../statistics/screens/statistics_screen.dart';
 import '../../submissions/screens/submissions_screen.dart';
@@ -95,6 +96,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               child: Column(
                 children: <Widget>[
                   const SizedBox(height: 20),
+                  const FeedbackPromptCard(),
                   _animated(0, _HomeTile(
                     label: 'Submit Assessment',
                     icon: Icons.touch_app_outlined,
